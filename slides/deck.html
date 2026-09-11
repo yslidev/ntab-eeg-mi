@@ -177,7 +177,7 @@ html{scroll-behavior:smooth}
 
 <section class="slide" id="s4">
   <div class="head"><span class="eyebrow"><b>Challenge</b> · when is the information</span><span class="idx">04 / 09</span></div>
-  <h2>All of it arrives 450 ms after the cue</h2>
+  <h2>Most of it arrives 450 ms after the cue</h2>
   <div class="cols c32">
     <figure>
       <img src="fig4_time_resolved.png" alt="Cross-subject accuracy against the centre of a sliding 0.75 second window, flat near chance before the cue, peaking sharply at 0.45 seconds and decaying afterwards.">
@@ -186,19 +186,20 @@ html{scroll-behavior:smooth}
     <div>
       <p>Accuracy climbs from 55% to <strong>74.8%</strong> in 600 ms, peaks 450 ms
       after the cue, then decays monotonically for the rest of the trial.</p>
-      <p>Sensorimotor desynchronisation does not have that shape. It ramps over about
-      half a second and then <em>sustains</em> for as long as the imagery continues,
-      which would read as a plateau.</p>
-      <p>A sharp peak that decays is the signature of a stimulus-evoked response.</p>
+      <p>I read that shape as a stimulus-evoked response, because a sharp peak that
+      decays is not what a sustained rhythm looks like — and this protocol puts the
+      cue on the left or right of the screen.</p>
+      <p>That reading turned out to be wrong. The next slide is the control that
+      killed it.</p>
     </div>
   </div>
-  <div class="note">The sustained portion, 2.5–4.5 s, holds 59.8% — the part that does
-  not need a target on screen</div>
+  <div class="note">The sustained portion, 2.5–4.5 s, holds 59.8% — a floor under the
+  strictest possible reading, not the headline</div>
 </section>
 
 <section class="slide" id="s5">
   <div class="head"><span class="eyebrow"><b>Challenge</b> · the thing nobody asked about</span><span class="idx">05 / 09</span></div>
-  <h2>The cue is on the wrong side of the screen</h2>
+  <h2>I disproved my own best finding</h2>
   <div class="cols c23">
     <div>
       <div class="quote">
@@ -214,20 +215,22 @@ html{scroll-behavior:smooth}
       If it did, it would not need EEG.</p>
     </div>
     <div>
+      <p><strong>The control:</strong> split both windows by electrode region. If the
+      early advantage is visual it belongs to the back of the head, and only early.</p>
       <table>
-        <tr><th>window after cue</th><th>DEV accuracy</th></tr>
-        <tr class="bad"><td>0.0 – 2.0 s</td><td class="n">74.4%</td></tr>
-        <tr><td>0.0 – 4.1 s</td><td class="n">71.6%</td></tr>
-        <tr><td>0.5 – 2.5 s</td><td class="n">69.0%</td></tr>
-        <tr class="key"><td>0.5 – 3.5 s &nbsp;<span class="dim">chosen</span></td><td class="n">68.3%</td></tr>
-        <tr><td>1.0 – 4.0 s</td><td class="n">65.7%</td></tr>
+        <tr><th>window</th><th>all 64</th><th>sensori&shy;motor</th><th>parieto-occip.</th></tr>
+        <tr><td>0.0 – 2.0 s</td><td class="n">71.0%</td><td class="n">67.6%</td><td class="n">59.6%</td></tr>
+        <tr><td>0.5 – 3.5 s</td><td class="n">69.3%</td><td class="n">66.1%</td><td class="n">59.8%</td></tr>
       </table>
-      <p style="margin-top:14px">Two windows of the same length, 0.0–2.0 and 0.5–2.5,
-      differ by 5.5 points. I did not take the best one.</p>
+      <p style="margin-top:14px">It does neither. Parieto-occipital sites give the same
+      number at every window position — volume conduction, and P3/P4 sit near the hand
+      areas. What changes with the window is the <em>sensorimotor</em> strip.</p>
+      <p>The early peak is the fast first phase of desynchronisation after a movement
+      cue. The confound is real and undismissable by design; it is not the driver.</p>
     </div>
   </div>
-  <div class="note">Parieto-occipital electrodes alone reach 59.8% cross-subject,
-  against 66.1% for the sensorimotor strip</div>
+  <div class="note">Four CSP patterns fitted across 93 subjects are dipoles over C3 and
+  C4 · 13–30 Hz alone reaches 64.2% and a visual evoked response is not in the beta band</div>
 </section>
 
 <section class="slide" id="s6">

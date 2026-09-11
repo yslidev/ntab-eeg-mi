@@ -86,6 +86,8 @@ Scripts are numbered in dependency order.
 | `12_interpretation.py` | time-resolved decoding and scalp weight maps |
 | `14_subject_bias.py` | per-subject decision bias and within-session drift |
 | `17_naive_splits.py` | what the easy, leaky splits would have reported |
+| `19_sequence_confound.py` | separates the alternating cue sequence from real carry-over |
+| `20_missing_controls.py` | artefact rejection, and where the early-window advantage lives |
 | `13_make_results_md.py` | regenerates `RESULTS.md` |
 
 ---
