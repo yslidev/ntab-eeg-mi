@@ -19,7 +19,7 @@ def rec(**kw):
     print(f"{kw['tag']:<42} test={kw['pooled_acc']:.4f} "
           f"train={kw.get('train_acc', float('nan')):.3f} {kw['secs']:.0f}s", flush=True)
 
-es = cached.load(CFG.PARADIGM)
+es = cached.load_pool(CFG.PARADIGM)
 X, chs, _ = cached.prepare(es, band=(4.0, 38.0), window=CFG.WINDOW)
 X = X.astype(np.float32)
 y, sub = es.y, es.subject

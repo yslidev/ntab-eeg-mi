@@ -16,7 +16,7 @@ args = ap.parse_args()
 pars = ["imagined", "executed"] if args.paradigm == "both" else [args.paradigm]
 Xs, ys, subs = [], [], []
 for p in pars:
-    es = cached.load(p)
+    es = cached.load_pool(p)
     X, chs, _ = cached.prepare(es, band=CFG.BAND, window=CFG.WINDOW)
     ea = models.EuclideanAlign()
     for u in np.unique(es.subject):                 # align each subject separately

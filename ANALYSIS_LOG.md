@@ -1,0 +1,104 @@
+# Analysis log
+
+Things I tried, in the order I tried them, including the ones that did not
+work. The brief asks for this; it is also the only honest way to show which
+results were predictions and which were discoveries.
+
+---
+
+### 1. Getting the data at all
+
+`mne.datasets.eegbci.load_data` fetches from `physionet.org`, which gave me
+**29 kB/s**. 763 files at 2.5 MB each would have taken about five hours.
+PhysioNet mirrors open datasets to S3, and `physionet-open.s3.amazonaws.com`
+gave **2.3 MB/s**, eighty times faster. Twelve parallel `curl` workers pulled
+the whole set in under two minutes. `src/data.py` reads from MNE's own cache
+directory, so the fast path and the MNE fetcher are interchangeable.
+
+Not a research decision, but it changed what was feasible: I could use all 109
+subjects instead of a subset, which matters for every cross-subject claim in
+this project.
+
+### 2. Auditing before modelling
+
+I read all 763 recordings and tabulated sampling rate, duration, channel
+count, annotation counts and durations, and peak amplitude before writing a
+single classifier. What came out:
+
+- **S088, S092, S100** are recorded at 128 Hz, not 160 Hz, and their
+  annotation durations are 5.125 s rather than 4.1 s. Resampling alone does not
+  reconcile them: the annotation durations and the run length are mutually
+  inconsistent, so I cannot tell what the true trial timing is. Excluded.
+- **S089 run 3** is 181 s with 22 trials rather than 123 s with 15. Excluded.
+- **S104 run 8** is truncated at 106 s with 13 trials. Kept; it is simply short.
+- Everything else is 64 channels, 160 Hz, 123–125 s, 15 task trials, strict
+  alternation of 4.2 s rest and 4.1 s task.
+- Peak amplitudes reach ~800 µV in some subjects, but only on isolated
+  channels and isolated samples, not a flat rail. This is not ADC clipping.
+- Class balance within a subject is never worse than 24/21. A majority-class
+  classifier gets 51–53%, so chance really is close to 50%.
+
+The strict alternation matters later: **every task trial is preceded by exactly
+4.2 s of rest**, which gives a free placebo window, and also means the "rest"
+period is contaminated by the previous trial.
+
+### 3. Which annotation is the left hand?
+
+The documentation says T1 is the left fist in runs 3/4/7/8/11/12. I wanted to
+confirm it from the signal rather than take it on faith, since getting it
+backwards would silently invert every interpretation.
+
+**First attempt, which was wrong.** I computed mu-band event-related
+desynchronisation as dB change from the pre-cue rest window, then compared C3
+against C4. The executed runs came out *non-significant and pointing the wrong
+way* (p = 0.12), while the imagined runs came out significant in the opposite
+direction. Two paradigms disagreeing, with the stronger-signal paradigm losing,
+is a sign the measure is broken, not that the labels are ambiguous.
+
+**Why it was broken.** The only available baseline is the 4.2 s of rest before
+the cue, and in a design with no gaps that rest period sits 2–4 s after the
+*previous* trial's movement. That is exactly when post-movement beta rebound
+peaks. So the "baseline" carries a lateralised signature of the previous trial,
+which partially cancels the current one. Executed movement has the strongest
+rebound, which is why it was hit hardest.
+
+**Second attempt.** Drop the baseline entirely and use a laterality index:
+`log10(power over a left-hemisphere cluster / power over the right cluster)`,
+compared between classes. Nothing is referenced to rest. This gives a
+consistent answer in both paradigms and all three bands, with 74–83% of the 105
+subjects showing the correct sign individually. T1 is the left fist.
+
+### 4. A machine that could not hold the data
+
+The first model sweep started swapping: 40 GB of swap in use on a 24 GB
+machine, and a single CSP configuration ran for 20 minutes without finishing.
+Three causes, all mine:
+
+- The epoch cache was being upcast to float64 in one shot (2.6 GB), then
+  filtered into another copy.
+- `joblib` workers were each slicing a fresh ~1.1 GB copy of the trial array.
+- `mne.decoding.CSP(reg="ledoit_wolf")` computes the Ledoit-Wolf estimate over
+  a 64 × 2.1M matrix per class per fold.
+
+Fixes: filter in blocks and keep float32; precompute every fold-independent
+feature once (log-variance, filter-bank power, and covariance matrices do not
+depend on the training split, so computing them inside each of 35 folds was
+pure waste); scalar shrinkage for CSP. The same sweep then ran in seconds per
+configuration instead of tens of minutes.
+
+The general lesson I would carry to a bigger dataset: separate the features
+that depend on the fold from the ones that do not, and only recompute the
+former. CSP is supervised, so it genuinely has to be refitted. A covariance
+matrix is not.
+
+### 5. Splitting the subjects before looking at anything
+
+Twelve subjects were drawn at random and quarantined (`HOLDOUT`). They are not
+in model selection, not in any reported cross-validation, and not in the
+training set of the shipped model. Of the remaining 93, 35 are `DEV` and 58 are
+`EVAL`. Everything I chose — feature family, classifier, metric, band, window,
+regularisation — was chosen against DEV folds. Every reported number uses EVAL
+folds. `predict.py` is then checked once on the HOLDOUT recordings.
+
+This costs accuracy: I am reporting a number from subjects I never tuned on.
+It buys the only thing that makes the number worth reporting.

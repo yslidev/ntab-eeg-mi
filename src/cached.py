@@ -49,3 +49,17 @@ def prepare(es, band=(8.0, 30.0), window=(0.5, 3.5), picks=None, order=4,
             chunk = sosfiltfilt(sos, chunk, axis=-1)
         out[i:i + block] = chunk[..., m].astype(dtype)
     return out, chs, t[m]
+
+
+def load_pool(paradigm: str):
+    """Epochs restricted to the non-holdout subject pool.
+
+    Every experiment loads through this, so no holdout subject can leak into a
+    training set by accident.
+    """
+    import config as CFG
+    es = load(paradigm)
+    m = np.isin(es.subject, CFG.ALL_SUBJECTS)
+    sub = es.subset(m)
+    sub.tmin, sub.tmax = es.tmin, es.tmax
+    return sub

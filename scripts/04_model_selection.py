@@ -46,7 +46,7 @@ def aligned(X, subject):
     return np.concatenate([ea.transform(X[subject == u]) for u in subs])[np.argsort(order)]
 
 
-es = cached.load(CFG.PARADIGM)
+es = cached.load_pool(CFG.PARADIGM)
 X, chs, _ = cached.prepare(es, band=CFG.BAND, window=CFG.WINDOW)
 
 # --- 1. fold-independent feature families ---------------------------------

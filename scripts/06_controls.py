@@ -32,7 +32,7 @@ def align(X, subject):
     return np.concatenate([ea.transform(X[subject == u]) for u in subs])[np.argsort(order)]
 
 
-es = cached.load(CFG.PARADIGM)
+es = cached.load_pool(CFG.PARADIGM)
 y, sub, run = es.y, es.subject, es.run
 
 # =====================================================================
@@ -132,7 +132,7 @@ subject_id_decode(models.precompute_cov(Xb), sb, rb,
 # 5. CROSS-PARADIGM. Does a model trained on executed movement transfer
 #    to imagined movement?
 # =====================================================================
-ei = cached.load("imagined"); ee = cached.load("executed")
+ei = cached.load_pool("imagined"); ee = cached.load_pool("executed")
 Xi, _, _ = cached.prepare(ei, band=CFG.BAND, window=CFG.WINDOW)
 Xe, _, _ = cached.prepare(ee, band=CFG.BAND, window=CFG.WINDOW)
 Ci = models.precompute_cov(align(Xi, ei.subject))
@@ -170,5 +170,63 @@ lo, hi = E.binom_ci(round(acc * sum(ns)), sum(ns))
 rec("cross-paradigm", "SAME subject: executed -> imagined", pooled_acc=acc,
     pooled_lo=lo, pooled_hi=hi, mean_sub_acc=float(np.mean(accs)),
     sd_sub_acc=float(np.std(accs)), n_subjects=len(accs), n_trials=int(sum(ns)))
+
+
+# =====================================================================
+# 6. HOW MUCH DOES THE ALIGNMENT KNOW? The alignment above is estimated
+#    from all of a test subject's trials, including the ones being
+#    predicted. Realistic deployment would estimate it from a short
+#    calibration block. Redo it using only the subject's FIRST run.
+# =====================================================================
+def align_first_run_only(X, subject, run):
+    out = np.empty_like(X)
+    ea = models.EuclideanAlign()
+    for u in np.unique(subject):
+        m = subject == u
+        first = np.unique(run[m])[0]
+        cal = X[m & (run == first)]
+        C = np.einsum("nct,ndt->cd", cal.astype(np.float64),
+                      cal.astype(np.float64)) / (len(cal) * cal.shape[-1])
+        C += 1e-10 * np.trace(C) / C.shape[0] * np.eye(C.shape[0])
+        w, V = np.linalg.eigh(C)
+        R = (V @ np.diag(w ** -0.5) @ V.T).astype(X.dtype)
+        out[m] = np.einsum("cd,ndt->nct", R, X[m])
+    return out
+
+
+Xf = align_first_run_only(X, sub, run)
+Covf = models.precompute_cov(Xf)
+later = run != np.array([np.unique(run[sub == s_])[0] for s_ in sub])
+r = E.loso(Covf[later], y[later], sub[later], run[later], MAKE,
+           subjects=CFG.EVAL_SUBJECTS, n_jobs=5)
+rec("align-scope", "EA from 1st run only, tested on runs 2-3", **E.summarize(r))
+r = E.loso(Cov[later], y[later], sub[later], run[later], MAKE,
+           subjects=CFG.EVAL_SUBJECTS, n_jobs=5)
+rec("align-scope", "EA from all 3 runs, tested on runs 2-3", **E.summarize(r))
+del Xf, Covf
+
+# =====================================================================
+# 7. IS THERE RUN-SPECIFIC NUISANCE AT ALL? If a classifier can tell which
+#    of a subject's three runs a trial came from, then random CV within a
+#    subject is sharing run-specific structure between train and test.
+# =====================================================================
+accs = []
+for s_ in CFG.EVAL_SUBJECTS:
+    m = sub == s_
+    if m.sum() < 30:
+        continue
+    from sklearn.model_selection import StratifiedKFold
+    Cs, rs = Cov[m], run[m]
+    pred = np.zeros(len(rs))
+    for tr_i, te_i in StratifiedKFold(5, shuffle=True, random_state=0).split(Cs, rs):
+        mdl = Pipeline([("ts", TangentSpace(metric="logeuclid")),
+                        ("sc", StandardScaler()),
+                        ("clf", LogisticRegression(C=0.1, max_iter=2000))])
+        mdl.fit(Cs[tr_i], rs[tr_i])
+        pred[te_i] = mdl.predict(Cs[te_i])
+    accs.append((pred == rs).mean())
+rec("run-identity", "which of this subject's 3 runs is it? (3-way)",
+    pooled_acc=float(np.mean(accs)), pooled_lo=float(np.mean(accs)),
+    pooled_hi=float(np.mean(accs)), chance=1 / 3, n_subjects=len(accs))
 
 print("\nwrote", OUT)
