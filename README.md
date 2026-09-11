@@ -89,8 +89,8 @@ Scripts are numbered in dependency order.
 | `04_model_selection.py` | first selection pass: feature and classifier families, DEV only |
 | `15_selection2.py`, `15b_bands_windows.py` | second pass: each family tuned, then band and window, DEV only |
 | `05_main_regimes.py` | the headline table, EVAL subjects |
-| `06_controls.py` | placebo windows, electrode lesions, subject identity, transfer |
-| `07_deep.py` | EEGNet, including its overfitting behaviour |
+| `06_controls.py` | placebo windows, electrode lesions, subject identity, alignment scope, cross-paradigm transfer |
+| `07_deep.py` | EEGNet across subjects, and its scaling behaviour |
 | `08_train_final.py` | trains the shipped model |
 | `09_figures.py` | figures from the result CSVs |
 | `10_who_is_decodable.py` | resting-state predictors of per-subject accuracy |
