@@ -522,14 +522,20 @@ slower than it needs to be.
 
 ## What I trust least
 
+**The cue confound, which no analysis can remove.** The target's screen position
+is perfectly correlated with the label, for the whole trial, by design. My
+electrode-region control says the early advantage is sensorimotor rather than
+occipital, and I believe it, but "not driven by the confound" is a weaker claim
+than "free of the confound", and only the latter would be safe. Settling it
+needs a dataset whose cue is not lateralised.
+
 **The alignment sees the test subject's data.** Whitening a recording by its
 own mean covariance uses no labels, so it is legal on unlabelled data, but it
 is transductive: the mean is estimated over all of that person's trials,
-including the ones being predicted. A strict online system would have to
-estimate it from a calibration block. `scripts/06_controls.py` measures exactly
-that cost by estimating the alignment from a subject's first run only and
-testing on their other two. If my conclusion is wrong anywhere, this is the
-most likely place.
+including the ones being predicted. Estimating it from a subject's first run
+only and testing on their other two costs **0.96 points**, 68.7% against 69.6%.
+That is smaller than I expected and it makes this a much weaker objection than
+I thought it would be when I wrote the control.
 
 **Model selection on 35 subjects is itself noisy.** A DEV leave-one-subject-out
 estimate carries a confidence interval of roughly plus or minus 2.4 points, and
