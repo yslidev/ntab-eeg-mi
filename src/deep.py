@@ -41,11 +41,20 @@ class EEGNet(nn.Module):
 
 
 def _standardise(X):
-    """Per-trial, per-channel z-score. Removes the huge between-subject
-    amplitude differences that would otherwise dominate a CNN's input."""
+    """Per-trial scaling by a SINGLE scalar, not per channel.
+
+    The first version of this z-scored every channel of every trial
+    independently, which normalises away exactly the thing the task lives in:
+    left-versus-right motor imagery is a *relative* power difference between
+    channels over the two hemispheres. Per-channel normalisation forces every
+    channel to unit variance and deletes it. The network then trained to 53.5%
+    on its own training set. Scaling each trial by one number preserves the
+    across-channel pattern while still removing the between-subject amplitude
+    differences a CNN would otherwise have to absorb."""
     mu = X.mean(-1, keepdims=True)
-    sd = X.std(-1, keepdims=True) + 1e-9
-    return (X - mu) / sd
+    X = X - mu
+    sd = X.std(axis=(1, 2), keepdims=True) + 1e-9
+    return X / sd
 
 
 def train_eval(Xtr, ytr, Xte, yte, Xva=None, yva=None, epochs=100, bs=64,
@@ -80,6 +89,11 @@ def train_eval(Xtr, ytr, Xte, yte, Xva=None, yva=None, epochs=100, bs=64,
             opt.step()
             sched.step()
             tot += loss.item() * len(idx)
+        # Only consider checkpoints once the one-cycle schedule has annealed.
+        # Selecting on a noisy validation signal from the very first epochs
+        # restored an essentially untrained network, which is what made the
+        # first cross-subject run report 50.7%.
+        warm = int(0.6 * epochs)
         if Xva is not None and (ep + 1) % 5 == 0:
             net.eval()
             with torch.no_grad():
@@ -87,7 +101,7 @@ def train_eval(Xtr, ytr, Xte, yte, Xva=None, yva=None, epochs=100, bs=64,
                 tracc = (net(tr[:1500].to(device)).argmax(1).cpu()
                          == yt[:1500]).float().mean().item()
             hist.append(dict(epoch=ep + 1, loss=tot / n, val_acc=acc, train_acc=tracc))
-            if acc > best:
+            if acc > best and ep >= warm:
                 best = acc
                 best_state = {k: v.detach().clone() for k, v in net.state_dict().items()}
             if verbose:

@@ -302,3 +302,74 @@ carries over between trials". Both readings are wrong, and distinguishing them
 needed a property of the *stimulus protocol* rather than of the signal. It is
 the clearest case in this project of a number meaning something other than what
 it appears to mean.
+
+### 11. Where the information actually is in the trial
+
+Sliding a 0.75 s window across the epoch and running full leave-one-subject-out
+at each position, on all 58 EVAL subjects:
+
+| window centre (s from cue) | accuracy |
+|---|---|
+| -1.75 to -0.15 | 50 - 55% |
+| +0.05 | 68.3% |
+| +0.25 | 72.8% |
+| **+0.45** | **74.8%** |
+| +0.65 | 72.0% |
+| +1.05 | 67.0% |
+| +1.85 | 62.9% |
+| +2.65 | 60.7% |
+| +3.45 | 56.8% |
+
+This settles the window question. Accuracy rises from 54.6% to 74.8% in 600 ms,
+peaks at 450 ms after the cue, and then decays monotonically for the rest of the
+trial. Sensorimotor desynchronisation does not have that shape. It ramps over
+roughly half a second and then *sustains* for as long as the imagery continues,
+which would show as a plateau. A sharp peak at 450 ms that decays steadily is
+the signature of a stimulus-evoked response, and the stimulus here is a target
+appearing on the left or right of the screen.
+
+So the 69.3% I measure over 0.5 to 3.5 s is a mixture. Most of it is the first
+second. The part that survives into the sustained portion of the trial, where
+no evoked transient remains, is about 57 to 61%, which matches the 59.8% I get
+from a fixed 2.5 to 4.5 s window.
+
+That is the number I would quote to someone building a brain-computer
+interface, because it is the part that does not depend on a lateralised cue
+being on screen. It is also, as the brief predicted, considerably lower than
+the first figure I saw.
+
+### 12. The convolutional network, and two bugs in my own harness
+
+EEGNet cross-subject came back at **50.7%**, dead chance, with 53.5% accuracy on
+its own training set. Two things were wrong, and only one of them was fixable
+in the time I had.
+
+**Bug one: early stopping restored an untrained network.** I checkpointed on
+validation accuracy every five epochs from the beginning of training. On a
+validation set of about 340 trials, validation accuracy is noise early on, so
+the best-scoring checkpoint was frequently from epoch five. The function then
+restored that checkpoint and reported it. The giveaway was that the verbose
+trace showed training accuracy at 0.560 by epoch 40 while the returned model
+scored 0.507 on the same training data. Fixed by only considering checkpoints
+after the one-cycle schedule has annealed.
+
+**Bug two, which I could not fix: per-channel trial normalisation.** I was
+z-scoring every channel of every trial independently. Left-versus-right motor
+imagery is a *relative* power difference between channels over the two
+hemispheres, and forcing every channel to unit variance deletes exactly that.
+Fixed by scaling each trial by a single scalar. It did not rescue the result.
+
+**What was left is a capacity and compute limit, not a bug.** The diagnostic
+that matters: the same network trained on 300 trials from 8 subjects reaches
+87.7% on its own training set; trained on 3,200 trials from 93 subjects it
+reaches 56.7%. It can fit a small, homogeneous set and cannot fit a large,
+heterogeneous one. A 2,000-parameter network at 80 Hz for 70 epochs is simply
+not enough for this, and on an M-series laptop each fold cost about six minutes,
+which is why it was 70 epochs.
+
+I am reporting this as a null result about my compute budget rather than about
+EEGNet. The published cross-subject figures for EEGNet on this dataset are in
+the low-to-mid sixties, and I have no reason to doubt them. What I can say is
+that a classical covariance pipeline reached 69.3% in seven seconds per fold on
+the same laptop, and that on a dataset with 43 trials per person that is the
+correct engineering choice.

@@ -91,6 +91,8 @@ def loso(X, y, subject, run, make_model, calib_n=0,
     def one(s):
         rng = np.random.default_rng(seed + int(s))
         te_m, tr_m = subject == s, subject != s
+        if te_m.sum() == 0 or len(np.unique(y[tr_m])) < 2:
+            return None                      # e.g. after aggressive epoch dropping
         Xtr, ytr, str_ = X[tr_m], y[tr_m].copy(), subject[tr_m]
         Xte, yte, rte = X[te_m], y[te_m].copy(), run[te_m]
         if shuffle_labels:
@@ -118,6 +120,8 @@ def loso(X, y, subject, run, make_model, calib_n=0,
                 ytr = np.concatenate([ytr, yte[take]])
                 keep[take] = False
 
+        if keep.sum() == 0 or len(np.unique(ytr)) < 2:
+            return None
         mdl = clone(make_model())
         mdl.fit(Xtr, ytr)
         pred = mdl.predict(Xte[keep])
@@ -128,7 +132,8 @@ def loso(X, y, subject, run, make_model, calib_n=0,
                     ci_lo=lo, ci_hi=hi, sig_thresh=binom_sig_threshold(int(keep.sum())),
                     train_acc=float((tr_pred == ytr[: len(tr_pred)]).mean()))
 
-    return Parallel(n_jobs=n_jobs)(delayed(one)(s) for s in subs)
+    out = Parallel(n_jobs=n_jobs)(delayed(one)(s) for s in subs)
+    return [r for r in out if r is not None]
 
 
 def summarize(rows, name=""):

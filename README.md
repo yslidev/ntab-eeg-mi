@@ -13,12 +13,15 @@ found by optimising a number:
   roughly 43 trials per person, the within-subject regimes are starved, not
   inflated. The usual story about optimistic within-subject cross-validation
   does not describe this dataset, and saying so requires having measured both.
-- **The best analysis window is the one you should not use.** Tuning the window
-  picks 0 to 2 s after the cue over 0.5 to 3.5 s, and all of the advantage sits
-  in the first half second. In this protocol the cue is a target that appears
-  on the *left or right of the screen*, so screen position is perfectly
-  confounded with the label. That is a lateralised visual response, not motor
-  imagery, and a real BCI would have nothing to read it from.
+- **Most of the accuracy is in the first second, and it probably is not motor
+  imagery.** Sliding a window across the trial, accuracy rises from 55% to
+  74.8% in 600 ms, peaks 450 ms after the cue, and decays from there. That is
+  the shape of a stimulus-evoked response, not of sensorimotor
+  desynchronisation, which sustains. In this protocol the cue is a target that
+  appears on the *left or right of the screen*, so screen position is perfectly
+  confounded with the label. The part that survives into the sustained portion
+  of the trial is about 60%, and that is the number a brain-computer interface
+  would actually get.
 - **Roughly a third of people cannot be decoded at all**, and the spread across
   people is larger than the difference between any two models I tried.
 
@@ -93,10 +96,17 @@ Full tables in [`RESULTS.md`](RESULTS.md); figures in `figures/`; the reasoning
 behind each number, including the attempts that failed, in
 [`ANALYSIS_LOG.md`](ANALYSIS_LOG.md).
 
-**The number I defend: 69.3% on imagined left-fist versus right-fist, for a
-person the model has never seen.** 58 evaluation subjects, 2,483 trials, 95%
-confidence interval 67.4 to 71.1. The same pipeline gets 73.3% on executed
-movement.
+**Two numbers, and the second is the one I defend.**
+
+- **69.3%** on imagined left-fist versus right-fist for a person the model has
+  never seen, over the conventional 0.5 to 3.5 s analysis window. 58 evaluation
+  subjects, 2,483 trials, 95% confidence interval 67.4 to 71.1. The same
+  pipeline gets 73.3% on executed movement.
+- **59.8%** over a 2.5 to 4.5 s window, which begins after the cue-evoked
+  transient has passed. This is the part that does not depend on a lateralised
+  target being on screen, and it is what I would quote to someone building a
+  BCI. It is the lower figure the brief predicted, and section 11 of
+  `ANALYSIS_LOG.md` is the argument for why it is the honest one.
 
 | regime (imagined) | accuracy | 95% CI | per-subject mean | shuffled twin |
 |---|---|---|---|---|
@@ -245,6 +255,54 @@ different:
 - After the alignment step, that same subject identification falls to chance.
   The alignment is not cosmetic; it removes the dominant source of variance in
   these features, and that is measurable rather than assumed.
+
+## Controls: what else could explain 69.3%
+
+Every number here is on the same EVAL subjects and the same pipeline.
+
+**Label shuffles.** Every regime, both paradigms, labels permuted inside each
+run so class counts are preserved: 47.5% to 51.0%. Nothing in the splitting
+machinery produces accuracy on its own.
+
+**Electrode lesions.** Restricting the model to electrode subsets, cross-subject:
+
+| electrodes | accuracy |
+|---|---|
+| all 64 | 69.3% |
+| sensorimotor strip (15) | 66.1% |
+| C3, Cz, C4 only (3) | 63.0% |
+| parieto-occipital (17) | 59.8% |
+| frontal (17) | 56.1% |
+
+Three electrodes over the hand area get within six points of all 64. Frontal
+electrodes, which is where eye and facial-muscle artefact would dominate, are
+the weakest set. Parieto-occipital electrodes do reach 59.8%, which is the
+clearest quantitative hint that some of the signal is visual rather than motor,
+and is why the `early-window` block in `RESULTS.md` splits both windows by
+region.
+
+**Subject identity in the same features.** A 93-way subject classifier on these
+covariances, trained on two runs and tested on the third, reaches **97.9%**
+against a 1.1% chance level. It reaches **98.8%** on the one-minute eyes-open
+baseline run, where nobody is doing anything, so this is a property of the
+person and the cap, not of the task. After the alignment step the same
+classifier falls to **1.6%**, which is chance. The alignment removes essentially
+all of it, and that is measured rather than assumed.
+
+**Run identity.** Within a subject, a classifier tells which of their three runs
+a trial came from with **99.2%** accuracy against 33% chance. Random folds
+inside a subject genuinely do share a large nuisance variable with the test
+trials.
+
+**Placebo windows, and the surprise in them.** Two controls came back above
+chance. The 2 s of rest *before* the cue predicts the upcoming label at 55.6%,
+and the task window predicts the *previous* trial's label at 61.0%. Neither is
+what it looks like. Consecutive cues in a run differ 76.8% of the time, so the
+sequence strongly alternates; given 69.3% on the current label, 60.4% on the
+previous label follows arithmetically, and a lateralised trace of the previous
+trial in the rest period predicts the next label without containing any
+information about it. `ANALYSIS_LOG.md` section 10 works this through and
+`scripts/19_sequence_confound.py` runs the test that separates the two readings.
 
 ## The thing nobody asked about: the cue is on the wrong side of the screen
 
