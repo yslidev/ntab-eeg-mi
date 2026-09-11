@@ -282,6 +282,17 @@ Every number here is on the same EVAL subjects and the same pipeline.
 run so class counts are preserved: 47.5% to 51.0%. Nothing in the splitting
 machinery produces accuracy on its own.
 
+**The easy split, which I expected to be inflated and was not.** Pooling every
+subject's trials into one pile and taking a random 5-fold — the canonical EEG
+mistake, because the test set then contains trials from people whose other
+trials are in training — gives **69.0%**, against 69.3% for honest
+leave-one-subject-out. No inflation at all. The reason is the alignment:
+pooling only helps a model that can recognise the person, and after whitening
+it cannot. Without the alignment the pooled split gives 62.1% and honest
+leave-one-subject-out gives 63.4%, so again no gap. The shortcut is only worth
+something when the shortcut is available. The inflated number in this dataset
+comes from the choice of analysis window instead.
+
 **Electrode lesions.** Restricting the model to electrode subsets, cross-subject:
 
 | electrodes | accuracy |
