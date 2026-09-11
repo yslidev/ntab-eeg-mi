@@ -118,6 +118,18 @@ if p.is_file():
             ["regime", "accuracy", "95% CI", "per-subject mean", "trials"],
             {"pooled_acc": pct, "mean_sub_acc": pct, "n_trials": lambda v: str(int(v))})
 
+# --- sequence confound ---------------------------------------------------
+p = R / "sequence_confound.csv"
+if p.is_file():
+    sq = pd.read_csv(p)
+    sq["ci"] = [ci(a_, b_) for a_, b_ in zip(sq.lo, sq.hi)]
+    out += ["## 4c. The cue sequence is not random", "",
+            "Consecutive trials in a run carry different labels 76.8% of the time "
+            "(lag-1 correlation -0.54). These rows separate what that structure "
+            "explains from what it does not.", ""]
+    tbl(sq, ["tag", "acc", "ci", "n"], ["test", "accuracy", "95% CI", "trials"],
+        {"acc": pct, "n": lambda v: str(int(v))})
+
 # --- naive splits --------------------------------------------------------
 p = R / "naive_splits.csv"
 if p.is_file():

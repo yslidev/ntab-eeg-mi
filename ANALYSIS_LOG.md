@@ -251,3 +251,54 @@ Two things follow that I would not have said before measuring it:
 The inflated figure that the brief anticipates does exist in this dataset. It
 is not regime A; it is what you get from pooling everyone's trials into one
 pile and taking a random split, which `scripts/17_naive_splits.py` measures.
+
+### 10. Two controls failed, and the reason was in the stimulus sequence
+
+Two of the controls came back above chance, which is the outcome you least
+want to see:
+
+| control | accuracy | 95% CI |
+|---|---|---|
+| the 2 s of rest *before* the cue, predicting the upcoming label | 55.6% | 53.6 - 57.6 |
+| the task window, predicting the *previous* trial's label | 61.0% | 59.0 - 63.0 |
+
+Read naively, the first says the pipeline leaks and the second says trials are
+not independent. Either would invalidate the headline number.
+
+Before believing either, I looked at the label sequence itself, which I had
+already checked once for a different reason (whether the same sequence is
+reused across subjects; it is not). Consecutive trials within a run carry
+**different** labels 76.8% of the time, with a 95% interval of 75.4 to 78.2 and
+a lag-1 correlation of -0.54. BCI2000's target sequence strongly alternates. It
+is not a coin flip, and I had assumed it was.
+
+That single fact accounts for both results.
+
+**The carry-over control.** A decoder that is right about the current label a
+fraction `a` of the time is automatically right about the previous label a
+fraction `a*q + (1-a)*(1-q)` of the time, where `q = 0.768` is the alternation
+rate. With `a = 0.693` that comes to **60.4%**. The observed figure is 61.0%.
+There is nothing left for genuine trial-to-trial carry-over to explain.
+
+**The pre-cue control.** The 4.2 s of rest before a cue sits 2 to 4 s after the
+previous trial's movement, which is exactly when post-movement beta rebound
+peaks, and beta rebound is lateralised. So the rest period carries a trace of
+the *previous* trial. Because the next label is usually the opposite, that
+trace predicts the upcoming label without containing any information about it.
+A window that knew the previous label perfectly would score 76.8% on the
+current one; the pre-cue window manages 55.6%, which is a weak trace, not a
+leak of future information.
+
+`scripts/19_sequence_confound.py` runs the decisive test: split trials by
+whether the label repeated. If the pre-cue window works only through the
+previous trial, its accuracy on the current label must sit above chance on
+repeats and *below* chance on alternations, in mirror image. Genuine advance
+information would be above chance on both.
+
+What I take from this. The pre-cue placebo is the right control to run, and it
+would have been easy to report "55.6%, above chance, therefore my pipeline
+leaks" and equally easy to report "61% on the previous trial, therefore EEG
+carries over between trials". Both readings are wrong, and distinguishing them
+needed a property of the *stimulus protocol* rather than of the signal. It is
+the clearest case in this project of a number meaning something other than what
+it appears to mean.
