@@ -67,6 +67,7 @@ Scripts are numbered in dependency order.
 | `11_holdout_check.py` | runs `predict.py` on the 12 untouched subjects |
 | `12_interpretation.py` | time-resolved decoding and scalp weight maps |
 | `14_subject_bias.py` | per-subject decision bias and within-session drift |
+| `17_naive_splits.py` | what the easy, leaky splits would have reported |
 | `13_make_results_md.py` | regenerates `RESULTS.md` |
 
 ---
@@ -108,7 +109,8 @@ one thing that does get removed is the between-subject covariance shift, and
 that is removed by an explicit, measurable step rather than by cleaning.
 
 **Alignment.** Each recording is whitened by its own mean spatial covariance,
-so every subject's mean covariance becomes the identity. No labels are used.
+so every subject's mean covariance becomes a multiple of the identity. No labels
+are used.
 This is the single most important component: it moves cross-subject accuracy
 by about four points, and it takes 93-way subject identification in these same
 features from 98% down to chance.
@@ -277,7 +279,7 @@ it will find.
 
 Whitening fixes the frame. For each recording you compute the average spatial
 covariance over its own trials and apply its inverse square root, which forces
-that average to become the identity. Afterwards, every person's *typical* trial
+that average to become a multiple of the identity. Afterwards, every person's *typical* trial
 looks the same, and what survives is how each individual trial deviates from
 that person's own typical trial. That deviation is the part that carries the
 task.

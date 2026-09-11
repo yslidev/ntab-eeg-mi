@@ -59,7 +59,8 @@ ax.set_title("Every subject, every regime (imagined)\n"
 
 ax = axes[1]
 w = ps.pivot_table(index="subject", columns="regime", values="acc")
-a, b = order[0], order[3] if len(order) > 3 else order[-1]
+a = [r for r in order if r.startswith("A")][0]
+b = [r for r in order if r.startswith("C")][0]
 ax.scatter(w[a], w[b], s=26, color=BLUE, alpha=.8)
 lim = [min(w[a].min(), w[b].min()) - .02, max(w[a].max(), w[b].max()) + .02]
 ax.plot(lim, lim, color="black", lw=1); ax.axhline(.5, color=GREY, ls=":")
@@ -78,7 +79,7 @@ if len(cal):
     ax.fill_between(cal.k, cal.pooled_lo, cal.pooled_hi, alpha=.25, color=BLUE)
     ax.plot(cal.k, cal.pooled_acc, "o-", color=BLUE)
     wr = mr[(mr.regime.str.startswith("B")) & (~mr.shuffled)
-            & (mr.paradigm == "imagined")].pooled_acc
+            & (mr.paradigm == "imagined")].pooled_acc.head(1)
     if len(wr):
         ax.axhline(float(wr.iloc[0]), color=RED, ls="--", lw=1.2,
                    label="within-subject, leave-run-out")
@@ -134,8 +135,11 @@ if dp.is_file():
 cp = R / "controls.csv"
 if cp.is_file():
     c = pd.read_csv(cp)
-    blocks = [("window", "analysis window"), ("lesion", "electrode subset")]
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4.0))
+    blocks = [("window", "analysis window"), ("lesion", "electrode subset"),
+              ("early-window", "where the early advantage lives")]
+    blocks = [b for b in blocks if (c.block == b[0]).any()]
+    fig, axes = plt.subplots(1, len(blocks), figsize=(6.0 * len(blocks), 4.4))
+    axes = np.atleast_1d(axes)
     for ax, (blk, ttl) in zip(axes, blocks):
         g = c[c.block == blk]
         ax.barh(np.arange(len(g)), g.pooled_acc - .5, left=.5,

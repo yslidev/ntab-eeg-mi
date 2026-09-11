@@ -76,6 +76,20 @@ if p.is_file():
          "within_run": lambda v: "-" if pd.isna(v) else pct(v),
          "secs": lambda v: f"{v:.0f}"})
 
+# --- selection pass 2 ----------------------------------------------------
+p = R / "selection2.csv"
+if p.is_file():
+    s2 = pd.read_csv(p)
+    s2["ci"] = [ci(a_, b_) for a_, b_ in zip(s2.pooled_lo, s2.pooled_hi)]
+    out += ["## 3b. Second selection pass (DEV subjects only)", "",
+            "Each family tuned on its own regularisation before comparison, then "
+            "band and window. Covariance-domain CSP throughout.", ""]
+    for fam, g in s2.groupby("family", sort=False):
+        out += [f"### {fam}", ""]
+        tbl(g, ["tag", "pooled_acc", "ci", "mean_sub_acc", "secs"],
+            ["configuration", "LOSO acc", "95% CI", "per-subject mean", "s"],
+            {"pooled_acc": pct, "mean_sub_acc": pct, "secs": lambda v: f"{v:.0f}"})
+
 # --- main regimes --------------------------------------------------------
 p = R / "main_regimes.csv"
 if p.is_file():
@@ -103,6 +117,15 @@ if p.is_file():
         tbl(cal, ["regime", "pooled_acc", "ci", "mean_sub_acc", "n_trials"],
             ["regime", "accuracy", "95% CI", "per-subject mean", "trials"],
             {"pooled_acc": pct, "mean_sub_acc": pct, "n_trials": lambda v: str(int(v))})
+
+# --- naive splits --------------------------------------------------------
+p = R / "naive_splits.csv"
+if p.is_file():
+    nv = pd.read_csv(p)
+    nv["ci"] = [ci(a_, b_) for a_, b_ in zip(nv.lo, nv.hi)]
+    out += ["## 4b. What the easy splits would have told me", ""]
+    tbl(nv, ["tag", "acc", "ci", "n"], ["split", "accuracy", "95% CI", "trials"],
+        {"acc": pct, "n": lambda v: str(int(v))})
 
 # --- controls ------------------------------------------------------------
 p = R / "controls.csv"
@@ -153,6 +176,25 @@ if p.is_file():
     tbl(g, ["paradigm", "files", "trials", "acc"],
         ["paradigm", "files", "trials", "accuracy"],
         {"acc": pct, "files": lambda v: str(int(v)), "trials": lambda v: str(int(v))})
+
+# --- subject bias --------------------------------------------------------
+p = R / "subject_bias.csv"
+if p.is_file():
+    sb = pd.read_csv(p)
+    n = sb.n.sum()
+    raw = (sb.acc_raw * sb.n).sum() / n
+    cen = (sb.acc_centred * sb.n).sum() / n
+    out += ["## 8b. Per-subject decision bias", "",
+            f"- Subjects: {len(sb)}, trials: {int(n)}.",
+            f"- True fraction of right-fist cues per subject: "
+            f"{sb.frac_true_right.mean():.3f} +- {sb.frac_true_right.std():.3f}.",
+            f"- Fraction the model *labels* right per subject: "
+            f"{sb.frac_pred_right.mean():.3f} +- {sb.frac_pred_right.std():.3f} "
+            f"(range {sb.frac_pred_right.min():.2f} to {sb.frac_pred_right.max():.2f}).",
+            f"- Accuracy with the decision threshold at 0: {raw*100:.2f}%.",
+            f"- Accuracy with the threshold at each subject's own median: "
+            f"{cen*100:.2f}% ({(cen-raw)*100:+.2f} points).",
+            f"- Mean per-subject AUC: {sb.auc.mean():.4f}.", ""]
 
 # --- time resolved -------------------------------------------------------
 p = R / "time_resolved.csv"
