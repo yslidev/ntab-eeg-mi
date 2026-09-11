@@ -13,15 +13,15 @@ found by optimising a number:
   roughly 43 trials per person, the within-subject regimes are starved, not
   inflated. The usual story about optimistic within-subject cross-validation
   does not describe this dataset, and saying so requires having measured both.
-- **Most of the accuracy is in the first second, and it probably is not motor
-  imagery.** Sliding a window across the trial, accuracy rises from 55% to
-  74.8% in 600 ms, peaks 450 ms after the cue, and decays from there. That is
-  the shape of a stimulus-evoked response, not of sensorimotor
-  desynchronisation, which sustains. In this protocol the cue is a target that
-  appears on the *left or right of the screen*, so screen position is perfectly
-  confounded with the label. The part that survives into the sustained portion
-  of the trial is about 60%, and that is the number a brain-computer interface
-  would actually get.
+- **Most of the accuracy is in the first second of the trial.** Sliding a window
+  across the epoch, accuracy rises from 55% to 74.8% in 600 ms, peaks 450 ms
+  after the cue, and decays steadily to 57% by the end. I initially read that
+  shape as a lateralised visual response, because this protocol puts the cue on
+  the *left or right of the screen* and screen position is perfectly confounded
+  with the label. My own control says otherwise, and I was wrong: the early
+  advantage lives in sensorimotor electrodes, while parieto-occipital
+  electrodes contribute the same ~60% at every window position. The confound is
+  real and undismissable by design, but it is not what drives the peak.
 - **Roughly a third of people cannot be decoded at all**, and the spread across
   people is larger than the difference between any two models I tried.
 
@@ -99,14 +99,14 @@ behind each number, including the attempts that failed, in
 **Two numbers, and the second is the one I defend.**
 
 - **69.3%** on imagined left-fist versus right-fist for a person the model has
-  never seen, over the conventional 0.5 to 3.5 s analysis window. 58 evaluation
-  subjects, 2,483 trials, 95% confidence interval 67.4 to 71.1. The same
-  pipeline gets 73.3% on executed movement.
-- **59.8%** over a 2.5 to 4.5 s window, which begins after the cue-evoked
-  transient has passed. This is the part that does not depend on a lateralised
-  target being on screen, and it is what I would quote to someone building a
-  BCI. It is the lower figure the brief predicted, and section 11 of
-  `ANALYSIS_LOG.md` is the argument for why it is the honest one.
+  never seen, over the conventional 0.5 to 3.5 s window. 58 evaluation subjects,
+  2,483 trials, 95% confidence interval 67.4 to 71.1. The same pipeline gets
+  73.3% on executed movement.
+- **59.8%** over a 2.5 to 4.5 s window, which starts after the cue-locked burst
+  has passed. This is a floor rather than the headline: it is what remains under
+  the strictest reading, in which everything time-locked to the cue is discarded
+  on the grounds that a real BCI has no cue. The evidence says that reading is
+  too strict, but the number is worth knowing.
 
 | regime (imagined) | accuracy | 95% CI | per-subject mean | shuffled twin |
 |---|---|---|---|---|
@@ -374,53 +374,54 @@ screen", and the subject acts "until the target disappeared".
 
 Screen position is therefore perfectly confounded with the class label, and the
 target is visible for the whole trial. A lateralised visual stimulus produces
-lateralised occipital activity and lateralised spatial attention, both of which
-are decodable from scalp EEG and neither of which is motor imagery. Any
-classifier trained on these runs is free to read the screen instead of the
-motor cortex, and nothing in a standard cross-validation would tell you which
-it did.
+lateralised occipital activity and lateralised spatial attention, both decodable
+from scalp EEG and neither of them motor imagery. Any classifier trained on
+these runs is free to read the screen instead of the motor cortex, and nothing
+in a standard cross-validation would tell you which it did. This is a property
+of the dataset that no amount of careful modelling can remove.
 
-I did not go looking for this. The window sweep found it:
+I did not go looking for this; the window sweep pointed at it. Tuning the
+analysis window on DEV subjects picks 0 to 2 s after the cue over 0.5 to 3.5 s,
+74.4% against 68.3%, and two windows of the same length — 0.0 to 2.0 and 0.5 to
+2.5 — differ by 5.5 points. All of the advantage is in the first 500 ms. The
+time-resolved curve says the same thing more sharply: accuracy peaks 450 ms
+after the cue and decays monotonically from there.
 
-| window after cue | cross-subject accuracy (DEV) |
-|---|---|
-| 0.0 - 2.0 s | **74.4%** |
-| 0.0 - 4.1 s | 71.6% |
-| 0.5 - 2.5 s | 69.0% |
-| 0.5 - 3.5 s | 68.3% |
-| 1.0 - 4.0 s | 65.7% |
+**Then the control refuted my own hypothesis.** Splitting both windows by
+electrode region:
 
-Two windows of the same length, 0.0-2.0 and 0.5-2.5, differ by five and a half
-points. All of the advantage is in the first 500 ms after the cue appears.
-Sensorimotor desynchronisation does not behave that way: it ramps over roughly
-half a second and is then sustained, so shifting a two-second window forward by
-500 ms should cost almost nothing. Something sharp and cue-locked is
-contributing.
+| window | all 64 | sensorimotor (15) | parieto-occipital (17) |
+|---|---|---|---|
+| 0.0 - 2.0 s | 71.0% | 67.6% | 59.6% |
+| 0.5 - 3.5 s | 69.3% | 66.1% | 59.8% |
 
-**This is why the headline uses 0.5 to 3.5 s and not the window that scores
-best.** A real brain-computer interface has no target on a screen telling it
-which hand the user is thinking about; if it did, it would not need EEG.
-Reporting 74.4% would be optimising the metric at the expense of the claim.
+If the early advantage were visual, it would live in the parieto-occipital
+electrodes and appear only in the early window. It does neither.
+Parieto-occipital sites contribute the same ~60% regardless of when you look,
+which is what volume conduction from sensorimotor sources looks like — and the
+set includes P3 and P4, which sit close enough to the hand areas to pick up mu
+rhythm directly. The part that *does* change with the window is the
+sensorimotor strip.
 
-**The evidence does not all point one way, and I am not going to pretend it
-does.** Three things argue against a purely visual account. The classifier's
-spatial patterns, fitted across all 93 pool subjects, are four clean dipoles
-over C3 and C4 with opposite LDA weights — the contralateral hand areas, not
-occipital cortex (`figures/fig5_spatial.png`). The sensorimotor strip alone
-reaches 66.1% against 59.8% for parieto-occipital electrodes. And 13-30 Hz alone
-reaches 64.2% on DEV, while a visual evoked response does not live in the beta
-band.
+Two other things point the same way. The classifier's spatial patterns, fitted
+across all 93 pool subjects, are four clean dipoles over C3 and C4 with opposite
+LDA weights — contralateral hand areas, not occipital cortex
+(`figures/fig5_spatial.png`). And 13 to 30 Hz alone reaches 64.2%, while a
+visual evoked response does not live in the beta band.
 
-What I think is actually happening: the early peak is a cue-locked response over
-sensorimotor cortex — desynchronisation is fastest in the first second after a
-movement cue — with some lateralised visual and attentional contribution on top,
-and the two cannot be separated in this dataset because the cue's screen
-position is perfectly confounded with the label. Either way the conclusion for
-the headline is the same. The sustained portion of the trial, where no evoked
-transient remains, carries about 60%, and that is the number that would survive
-in a setting with no lateralised cue. The `early-window` block in `RESULTS.md`
-splits both windows by electrode region for anyone who wants to weigh this
-themselves.
+**So what I now believe:** the early peak is the initial, strongest phase of
+event-related desynchronisation, which is fastest in the first second after a
+movement cue and then partially recovers. That is a well-documented time
+course, and it fits both the shape of the curve and where on the scalp it
+lives.
+
+I am leaving this section in, rather than deleting a hypothesis I disproved,
+because the confound is real and a skeptical reader should know it exists. What
+changed is my estimate of how much it matters. I cannot rule out a visual or
+attentional contribution — the design makes that impossible — but my own
+controls say it is not the driver, and reporting 59.8% as the headline on the
+strength of a hypothesis my data contradicts would have been its own kind of
+dishonesty.
 
 ## The design decision I would defend hardest
 

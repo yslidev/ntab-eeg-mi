@@ -383,3 +383,49 @@ the low-to-mid sixties, and I have no reason to doubt them. What I can say is
 that a classical covariance pipeline reached 69.3% in seven seconds per fold on
 the same laptop, and that on a dataset with 43 trials per person that is the
 correct engineering choice.
+
+### 13. I disproved my own best finding
+
+Sections 8 and 11 build a case that the early peak in the time-resolved curve is
+a lateralised visual response to the cue. The protocol supports it — the target
+appears on the left or right of the screen — and the shape of the curve supports
+it: a rise from 55% to 74.8% in 600 ms, peaking at 450 ms, then decaying, which
+does not look like sustained sensorimotor desynchronisation.
+
+The control that would settle it is to split both windows by electrode region.
+If the early advantage is visual, it belongs to the parieto-occipital
+electrodes and appears only in the early window.
+
+| window | all 64 | sensorimotor (15) | parieto-occipital (17) |
+|---|---|---|---|
+| 0.0 - 2.0 s | 71.0% | 67.6% | 59.6% |
+| 0.5 - 3.5 s | 69.3% | 66.1% | 59.8% |
+
+Parieto-occipital electrodes contribute 59.6% and 59.8% — the same number in
+both windows, to within a fifth of a point. Nothing about them is early. The
+component that changes with the window is the sensorimotor strip, which is the
+opposite of what my hypothesis predicted.
+
+The parieto-occipital figure is also probably not visual at all. That electrode
+set includes P3 and P4, which sit close enough to the hand areas to pick up mu
+rhythm by volume conduction, and a constant ~60% at every window position is
+exactly what volume conduction from a sensorimotor source would give.
+
+Two other results agree. The classifier's spatial patterns are four dipoles over
+C3 and C4 with opposite LDA weights. And 13-30 Hz alone reaches 64.2% on DEV,
+whereas a visual evoked response does not live in the beta band.
+
+**Revised conclusion.** The early peak is the initial phase of event-related
+desynchronisation, which is fastest in the first second after a movement cue and
+then partially recovers. The headline stays at 69.3% over 0.5 to 3.5 s. The
+59.8% figure from the late window remains in the write-up as a floor — what is
+left under the strictest possible reading, in which everything time-locked to
+the cue is thrown away — but it is not the number I defend, because the evidence
+for throwing that away did not hold up.
+
+What this cost and what it bought: I had already written the write-up around the
+visual story, and it was the most interesting thing in the project. Running the
+control that could kill it took twenty minutes. The confound is still real and
+still worth flagging, since the design makes it impossible to exclude entirely.
+What changed is that I now have a measurement of how much it matters instead of
+an argument about how much it might.
