@@ -219,11 +219,20 @@ measurement rather than an assertion.
 
 The audit found no flat channels, no ADC clipping (the largest amplitudes are
 isolated samples on isolated channels, not a rail), and no runs with
-pathological durations beyond the four excluded subjects.
-`scripts/06_controls.py` then drops the noisiest 1%, 5% and 20% of epochs by
-within-band peak-to-peak amplitude and re-runs the whole cross-subject
-evaluation. If a cleaning step were needed, throwing away the worst fifth of
-the data would move the number.
+pathological durations beyond the four excluded subjects. Within-band
+peak-to-peak amplitude per epoch has a median of 167 µV, a 99th percentile of
+774 µV and a maximum of 1,712 µV, so there are genuinely noisy epochs. Dropping
+them changes almost nothing:
+
+| epochs kept | cross-subject accuracy |
+|---|---|
+| all 3,975 | 69.28% |
+| drop the noisiest 1% | 69.19% |
+| drop the noisiest 5% | 69.14% |
+| drop the noisiest 20% | 68.72% |
+
+Throwing away the worst fifth of the data costs 0.6 points. There is no cleaning
+step here worth making.
 
 The reasoning behind the choice: every cleaning step is a judgement call with
 a knob on it, and knobs that are tuned while looking at accuracy are how an
@@ -382,11 +391,25 @@ best.** A real brain-computer interface has no target on a screen telling it
 which hand the user is thinking about; if it did, it would not need EEG.
 Reporting 74.4% would be optimising the metric at the expense of the claim.
 
-Three results in `RESULTS.md` bear on how much of even the 0.5-3.5 s number is
-visual: the electrode lesion (`lesion` and `early-window` blocks), the
-time-resolved decoding curve (`figures/fig4_time_resolved.png`), and the band
-sweep, in which 13-30 Hz alone reaches 64.2% — a visual evoked response does
-not live in the beta band.
+**The evidence does not all point one way, and I am not going to pretend it
+does.** Three things argue against a purely visual account. The classifier's
+spatial patterns, fitted across all 93 pool subjects, are four clean dipoles
+over C3 and C4 with opposite LDA weights — the contralateral hand areas, not
+occipital cortex (`figures/fig5_spatial.png`). The sensorimotor strip alone
+reaches 66.1% against 59.8% for parieto-occipital electrodes. And 13-30 Hz alone
+reaches 64.2% on DEV, while a visual evoked response does not live in the beta
+band.
+
+What I think is actually happening: the early peak is a cue-locked response over
+sensorimotor cortex — desynchronisation is fastest in the first second after a
+movement cue — with some lateralised visual and attentional contribution on top,
+and the two cannot be separated in this dataset because the cue's screen
+position is perfectly confounded with the label. Either way the conclusion for
+the headline is the same. The sustained portion of the trial, where no evoked
+transient remains, carries about 60%, and that is the number that would survive
+in a setting with no lateralised cue. The `early-window` block in `RESULTS.md`
+splits both windows by electrode region for anyone who wants to weigh this
+themselves.
 
 ## The design decision I would defend hardest
 
