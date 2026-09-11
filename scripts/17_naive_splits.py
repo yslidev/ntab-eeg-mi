@@ -47,7 +47,7 @@ es = cached.load_pool(CFG.PARADIGM)
 m = np.isin(es.subject, np.concatenate([CFG.EVAL_SUBJECTS, CFG.DEV_SUBJECTS]))
 
 # --- 1. pooled random k-fold over whole trials ----------------------------
-X, chs, _ = cached.prepare(es, band=CFG.BAND, window=CFG.WINDOW)
+X, chs, tt = cached.prepare(es, band=CFG.BAND, window=CFG.WINDOW)
 Cov = chosen.featurize(X, es.subject)
 pooled_kfold(Cov, es.y, "NAIVE: pooled random 5-fold over trials, subjects mixed")
 
@@ -59,12 +59,12 @@ del Cov_raw
 
 # --- 2. pooled random k-fold over overlapping crops -----------------------
 # four 2 s crops per trial, hopping 0.5 s: adjacent crops share 75% of samples
-t = cached.times(es)
+# tt is the time axis of the *prepared* window, not of the whole cache
 crops, ys, subs = [], [], []
-for start in [0.5, 1.0, 1.5, 2.0]:
-    sel = (t >= start) & (t <= start + 2.0)
-    n_t = int(sel.sum())
-    crops.append(X[..., np.where(sel)[0][:n_t]])
+n_t = min(int(((tt >= s0) & (tt <= s0 + 2.0)).sum()) for s0 in [0.5, 1.0, 1.5])
+for start in [0.5, 1.0, 1.5]:
+    sel = np.where((tt >= start) & (tt <= start + 2.0))[0][:n_t]
+    crops.append(np.ascontiguousarray(X[..., sel]))
     ys.append(es.y); subs.append(es.subject)
 Xc = np.concatenate(crops); yc = np.concatenate(ys); sc = np.concatenate(subs)
 del crops
@@ -72,7 +72,7 @@ Cc = chosen.featurize(Xc, sc)
 pooled_kfold(Cc, yc, "NAIVE: pooled random 5-fold over overlapping 2 s crops")
 
 # same crops, but split by subject: the augmentation alone is not the problem
-r = E.loso(Cc, yc, sc, np.tile(es.run, 4), chosen.make,
+r = E.loso(Cc, yc, sc, np.tile(es.run, 3), chosen.make,
            subjects=CFG.EVAL_SUBJECTS, n_jobs=6)
 s = E.summarize(r)
 rec(tag="HONEST: same crops, leave-one-subject-out",

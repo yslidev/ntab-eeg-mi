@@ -248,9 +248,19 @@ Two things follow that I would not have said before measuring it:
   inside a subject genuinely do share a large nuisance variable; that shows up
   as A and B being close, rather than as A beating C.
 
-The inflated figure that the brief anticipates does exist in this dataset. It
-is not regime A; it is what you get from pooling everyone's trials into one
-pile and taking a random split, which `scripts/17_naive_splits.py` measures.
+I expected the inflated figure the brief anticipates to come from pooling
+everyone's trials into one pile and taking a random split, which is the
+canonical EEG mistake. It does not, in this pipeline: the pooled random split
+gives 69.0% against 69.3% for honest leave-one-subject-out. The reason is the
+alignment. Pooling only helps a model that can recognise the person, and after
+whitening each recording by its own mean covariance it cannot: 93-way subject
+identification falls from 97.9% to 1.6%. Without alignment the pooled split
+gives 62.1% and honest leave-one-subject-out gives 63.4%, so again no
+inflation. The shortcut is only worth something when the shortcut is available.
+
+The inflated figure in this dataset comes from somewhere else entirely: the
+choice of analysis window, and what the subject is looking at while the window
+is open. That is sections 8 and 11.
 
 ### 10. Two controls failed, and the reason was in the stimulus sequence
 
