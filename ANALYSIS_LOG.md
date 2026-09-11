@@ -103,38 +103,51 @@ folds. `predict.py` is then checked once on the HOLDOUT recordings.
 This costs accuracy: I am reporting a number from subjects I never tuned on.
 It buys the only thing that makes the number worth reporting.
 
-### 6. Alignment helps one model family and hurts another
+### 6. A finding that turned out to be an artefact of my own tuning
 
 Euclidean alignment whitens each recording by its own mean spatial covariance,
 so every subject's mean covariance becomes the identity. It is the standard
-first thing to try for cross-subject EEG. On DEV folds it did this:
+first thing to try for cross-subject EEG. In the first sweep, with every model
+sitting at one arbitrary regularisation strength, it did this on DEV folds:
 
 | model | no alignment | with alignment |
 |---|---|---|
-| CSP + LDA (6 components) | 61.6% | **68.3%** |
+| CSP + LDA, 6 components | 61.6% | **68.3%** |
 | log-variance + logistic regression | 57.6% | 64.9% |
-| tangent space, log-Euclidean | 62.8% | 59.5% |
-| tangent space, affine-invariant | 56.7% | 59.7% |
+| tangent space, log-Euclidean, C=0.1 | 62.8% | 59.5% |
+| tangent space, affine-invariant, C=0.1 | 56.7% | 59.7% |
 
-My first reaction was that the alignment was broken, because it made the
-tangent-space model worse. It is not: after alignment each subject's mean
-covariance is the identity to within 3e-6 in Frobenius norm, and the
-between-subject dispersion of trace-normalised mean covariances drops from
-14.6 to 3e-6. The transform does exactly what it claims.
+The tangent-space row is the interesting one, and my first reaction was that
+the alignment must be broken. It is not: after alignment each subject's mean
+covariance equals the identity to within 3e-6 in Frobenius norm, and the
+between-subject dispersion of trace-normalised mean covariances falls from 14.6
+to 3e-6. The transform does exactly what it claims.
 
-The split makes sense once you look at what each model needs. CSP solves a
-generalised eigenvalue problem on two class covariances pooled across
-subjects; if every subject contributes a differently-scaled, differently-shaped
-covariance, that pooled problem is dominated by between-subject variation
-rather than between-class variation. Whitening each subject first puts them in
-a common frame and the filters become interpretable across people. The
-tangent-space models already take a matrix logarithm, which absorbs scale, and
-the projection point is the training-set mean covariance — whitening removes
-the very structure that made that reference point informative.
+My second reaction was to write it up as a real asymmetry between model
+families, with a plausible story about CSP needing a common frame and the
+tangent space already absorbing scale through the matrix logarithm. That story
+was wrong too.
 
-The practical consequence is that the second half of the first sweep, which
-tuned band and window for the tangent-space model, was tuning the wrong model.
-`scripts/15_csp_sweep.py` is the follow-up pass on the family that actually won.
+What actually happened is that whitening changes the scale of the tangent-space
+features, and the tangent-space model has 2,080 of them for about 3,900
+training trials, so it is extremely sensitive to its L2 penalty. At C=0.1 it is
+badly under-regularised; the first sweep was comparing a tuned CSP against an
+untuned tangent-space model. Sweeping the penalty:
+
+| C | 0.1 | 0.01 | 0.003 | 0.001 |
+|---|---|---|---|---|
+| tangent space + alignment | 59.5% | 62.6% | 64.0% | ~65.7% |
+
+and once the penalty is set sensibly, alignment helps the tangent-space model
+as well: 61.4% without it, 65.7% with it. The families end up close together,
+with CSP slightly ahead.
+
+I am keeping this in the log rather than quietly fixing it, because it is the
+most instructive mistake I made. A single-hyper-parameter comparison between
+model families is not a comparison between model families. It is a comparison
+between one tuned model and one untuned one, and it will invent effects that
+are not there. `scripts/15_selection2.py` re-runs the comparison with each
+family's own knob tuned on DEV folds.
 
 ### 7. A convolutional network that was too slow before it was too weak
 

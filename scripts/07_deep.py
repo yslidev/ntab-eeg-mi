@@ -9,8 +9,8 @@ import numpy as np, pandas as pd
 import cached, models, deep, chosen, evaluation as E, config as CFG
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--epochs", type=int, default=100)
-ap.add_argument("--folds", type=int, default=7)
+ap.add_argument("--epochs", type=int, default=70)
+ap.add_argument("--folds", type=int, default=5)
 ap.add_argument("--out", default="results/deep.csv")
 args = ap.parse_args()
 
@@ -35,11 +35,11 @@ rng = np.random.default_rng(CFG.SEED)
 GROUPS = np.array_split(CFG.EVAL_SUBJECTS, args.folds)
 
 
-def cross_subject(train_pool, tag, epochs, seed=0):
+def cross_subject(train_pool, tag, epochs, seed=0, n_groups=None):
     """train_pool: subject ids allowed in training (validation carved from it)."""
     t0 = time.time()
     per_sub, tr_accs, hists = [], [], []
-    for g in GROUPS:
+    for g in (GROUPS if n_groups is None else GROUPS[:n_groups]):
         te = np.isin(sub, g)
         pool = np.array([s for s in train_pool if s not in g])
         if len(pool) < 12:
@@ -77,7 +77,7 @@ for s in np.unique(sub):
     m = sub == s
     ys[m] = rng.permutation(ys[m])
 y_real, y = y, ys
-cross_subject(CFG.ALL_SUBJECTS, "EEGNet cross-subject, SHUFFLED labels", args.epochs)
+cross_subject(CFG.ALL_SUBJECTS, "EEGNet cross-subject, SHUFFLED labels", args.epochs, n_groups=3)
 y = y_real
 
 # 3. how much does it need? accuracy vs number of training subjects
@@ -85,13 +85,13 @@ for n_tr in [8, 24, 64]:
     pool = CFG.DEV_SUBJECTS if n_tr <= len(CFG.DEV_SUBJECTS) else CFG.ALL_SUBJECTS
     pool = rng.choice(CFG.ALL_SUBJECTS, size=min(n_tr, len(CFG.ALL_SUBJECTS)),
                       replace=False)
-    cross_subject(pool, f"EEGNet, {n_tr} training subjects", args.epochs)
+    cross_subject(pool, f"EEGNet, {n_tr} training subjects", args.epochs, n_groups=3)
 
 # 4. within-subject: ~43 trials per person. This is where it memorises.
 t0 = time.time()
 from sklearn.model_selection import StratifiedKFold
 per_sub, tr_accs = [], []
-for s in CFG.EVAL_SUBJECTS[:15]:
+for s in CFG.EVAL_SUBJECTS[:12]:
     m = sub == s
     Xs, ys_ = X[m], y[m]
     pred = np.zeros(len(ys_), int)
@@ -102,7 +102,7 @@ for s in CFG.EVAL_SUBJECTS[:15]:
     lo, hi = E.binom_ci(k, n)
     per_sub.append(dict(subject=int(s), n=n, acc=k / n, ci_lo=lo, ci_hi=hi,
                         sig_thresh=E.binom_sig_threshold(n)))
-rec(tag="EEGNet within-subject (random CV, 15 subj)",
+rec(tag="EEGNet within-subject (random CV, 12 subj)",
     train_acc=float(np.mean(tr_accs)), secs=time.time() - t0,
     n_train_subjects=1, **E.summarize(per_sub))
 

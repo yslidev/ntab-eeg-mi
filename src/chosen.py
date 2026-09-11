@@ -21,9 +21,15 @@ import models
 NAME = "align + CovCSP + shrinkage LDA"
 BAND = (8.0, 30.0)
 WINDOW = (0.5, 3.5)
-N_COMPONENTS = 6
+N_COMPONENTS = 4
 SHRINKAGE = 0.1
 ALIGN_ALPHA = 1.0
+
+# Component count chosen by the one-standard-error rule on DEV folds: accuracy
+# is flat in k from 4 to 32 (67.6% to 69.4%, every confidence interval
+# overlapping), so the rule takes the smallest k within one standard error of
+# the best, which is 4. Four spatial filters also make the pattern figure
+# readable.
 
 
 def make():

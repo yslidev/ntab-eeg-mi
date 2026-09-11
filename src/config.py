@@ -14,6 +14,7 @@ The subject split below is the backbone of the whole evaluation.
 Training sets always contain every *other* non-holdout subject, so DEV and EVAL
 regimes see the same amount of training data; only the test folds differ.
 """
+import os
 import numpy as np
 import data as D
 
@@ -32,3 +33,11 @@ BAND = (8.0, 30.0)
 WINDOW = (0.5, 3.5)
 PARADIGM = "imagined"
 SEED = 0
+
+
+if os.environ.get("SMOKE"):
+    # Tiny split for end-to-end plumbing checks. Never used for reported numbers.
+    _n = int(os.environ["SMOKE"])
+    DEV_SUBJECTS = DEV_SUBJECTS[:_n]
+    EVAL_SUBJECTS = EVAL_SUBJECTS[:_n]
+    HOLDOUT_SUBJECTS = HOLDOUT_SUBJECTS[:max(2, _n // 2)]

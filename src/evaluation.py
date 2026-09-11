@@ -104,12 +104,19 @@ def loso(X, y, subject, run, make_model, align=False, calib_n=0,
 
         keep = np.ones(len(yte), bool)
         if calib_n > 0:
-            first = np.unique(rte)[0]
-            pool = np.where(rte == first)[0]
+            # Take calibration trials in recording order -- earliest runs first,
+            # class-balanced -- so calibration data always precedes test data.
             take = []
-            for lab in (0, 1):                       # class-balanced calibration
-                cand = pool[yte[pool] == lab]
-                take += list(cand[: calib_n // 2])
+            need = {0: calib_n // 2, 1: calib_n - calib_n // 2}
+            for r_ in np.unique(rte):
+                pool = np.where(rte == r_)[0]
+                for lab in (0, 1):
+                    cand = pool[yte[pool] == lab]
+                    n_take = min(need[lab], len(cand))
+                    take += list(cand[:n_take])
+                    need[lab] -= n_take
+                if need[0] <= 0 and need[1] <= 0:
+                    break
             take = np.array(take, int)
             if len(take):
                 Xtr = np.concatenate([Xtr, Xte[take]])
