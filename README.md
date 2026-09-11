@@ -370,3 +370,45 @@ the two artefact classes that matter most here, since eye blinks live below
 8 Hz and drift below 1 Hz. Muscle artefact above 30 Hz is also filtered out,
 and the electrode-lesion control is what tells us whether what remains is
 sensorimotor or something facial.
+
+## The thing nobody asked about: the cue is on the wrong side of the screen
+
+PhysioNet's description of this protocol says, of the left-versus-right fist
+runs: "A visual target appeared on either the left or right side of the
+screen", and the subject acts "until the target disappeared".
+
+Screen position is therefore perfectly confounded with the class label, and the
+target is visible for the whole trial. A lateralised visual stimulus produces
+lateralised occipital activity and lateralised spatial attention, both of which
+are decodable from scalp EEG and neither of which is motor imagery. Any
+classifier trained on these runs is free to read the screen instead of the
+motor cortex, and nothing in a standard cross-validation would tell you which
+it did.
+
+I did not go looking for this. The window sweep found it:
+
+| window after cue | cross-subject accuracy (DEV) |
+|---|---|
+| 0.0 - 2.0 s | **74.4%** |
+| 0.0 - 4.1 s | 71.6% |
+| 0.5 - 2.5 s | 69.0% |
+| 0.5 - 3.5 s | 68.3% |
+| 1.0 - 4.0 s | 65.7% |
+
+Two windows of the same length, 0.0-2.0 and 0.5-2.5, differ by five and a half
+points. All of the advantage is in the first 500 ms after the cue appears.
+Sensorimotor desynchronisation does not behave that way: it ramps over roughly
+half a second and is then sustained, so shifting a two-second window forward by
+500 ms should cost almost nothing. Something sharp and cue-locked is
+contributing.
+
+**This is why the headline uses 0.5 to 3.5 s and not the window that scores
+best.** A real brain-computer interface has no target on a screen telling it
+which hand the user is thinking about; if it did, it would not need EEG.
+Reporting 74.4% would be optimising the metric at the expense of the claim.
+
+Three results in `RESULTS.md` bear on how much of even the 0.5-3.5 s number is
+visual: the electrode lesion (`lesion` and `early-window` blocks), the
+time-resolved decoding curve (`figures/fig4_time_resolved.png`), and the band
+sweep, in which 13-30 Hz alone reaches 64.2% — a visual evoked response does
+not live in the beta band.
