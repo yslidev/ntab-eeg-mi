@@ -40,7 +40,7 @@ def run(tag, data, make_model, do_within=True, n_jobs=6):
 
 
 def aligned(X, subject):
-    ea = models.EuclideanAlign()
+    ea = models.AlignShrunk(alpha=1.0)
     subs = np.unique(subject)
     order = np.concatenate([np.where(subject == u)[0] for u in subs])
     return np.concatenate([ea.transform(X[subject == u]) for u in subs])[np.argsort(order)]

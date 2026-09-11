@@ -9,8 +9,11 @@ is the substance of this project:
       different recording run (different block, minutes apart)?
   loso()                         -- can a model trained on 104 people label a
       person it has never seen?
-  loso(align=True)               -- ... given their unlabelled data to calibrate on?
   loso(calib_n=k)                -- ... given k labelled trials from them?
+
+Per-recording alignment is applied *before* these functions are called (see
+src/chosen.py), because it is unsupervised and fold-independent, so it does not
+need to be inside the fold loop.
 """
 from __future__ import annotations
 import numpy as np
@@ -19,7 +22,6 @@ from sklearn.base import clone
 from sklearn.model_selection import StratifiedKFold
 from joblib import Parallel, delayed
 
-from models import EuclideanAlign
 
 
 def binom_ci(k, n, alpha=0.05):
@@ -79,11 +81,11 @@ def within_subject(X, y, subject, run, make_model, split="random", n_splits=5,
     return Parallel(n_jobs=n_jobs)(delayed(one)(s) for s in subs)
 
 
-def loso(X, y, subject, run, make_model, align=False, calib_n=0,
+def loso(X, y, subject, run, make_model, calib_n=0,
          shuffle_labels=False, seed=0, n_jobs=5, subjects=None):
-    """Leave-one-subject-out. Optionally align, optionally give k labelled
-    calibration trials from the held-out subject (taken from their FIRST run,
-    so calibration data always precedes test data in time)."""
+    """Leave-one-subject-out, optionally giving the held-out subject k labelled
+    calibration trials taken in recording order, so calibration data always
+    precedes test data in time."""
     subs = np.unique(subject) if subjects is None else np.asarray(subjects)
 
     def one(s):
@@ -94,13 +96,6 @@ def loso(X, y, subject, run, make_model, align=False, calib_n=0,
         if shuffle_labels:
             ytr = _shuffle_within(ytr, str_, rng)
             yte = _shuffle_within(yte, rte, rng)
-
-        if align:
-            ea = EuclideanAlign()
-            Xtr = np.concatenate([ea.transform(Xtr[str_ == u]) for u in np.unique(str_)])
-            order = np.concatenate([np.where(str_ == u)[0] for u in np.unique(str_)])
-            ytr = ytr[order]
-            Xte = ea.transform(Xte)
 
         keep = np.ones(len(yte), bool)
         if calib_n > 0:

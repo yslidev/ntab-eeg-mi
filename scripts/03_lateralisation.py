@@ -10,6 +10,11 @@ the runs alternate task/rest with no gap.
 
 If T1 is the LEFT fist, T1 trials desynchronise the RIGHT hemisphere more, so
 right-cluster power drops, so LI(T1) > LI(T2).
+
+This runs over all 105 usable subjects, including the HOLDOUT ones. That is
+deliberate and harmless: it establishes what the annotations mean, which is a
+property of the dataset rather than a modelling choice, and nothing fitted here
+is carried into any classifier.
 """
 import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))

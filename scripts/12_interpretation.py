@@ -20,13 +20,6 @@ SUBSET = CFG.EVAL_SUBJECTS               # all EVAL subjects: the covariance-dom
                                          # CSP is cheap enough now
 
 
-def aligned(X, subject):
-    ea = models.EuclideanAlign()
-    subs = np.unique(subject)
-    order = np.concatenate([np.where(subject == u)[0] for u in subs])
-    return np.concatenate([ea.transform(X[subject == u]) for u in subs])[np.argsort(order)]
-
-
 # ---------------- (a) time-resolved ---------------------------------------
 WIN = 0.75                 # short enough to localise a cue-evoked response
 centres = np.arange(-1.75, 4.1, 0.20)

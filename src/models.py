@@ -37,23 +37,6 @@ class FilterBank(BaseEstimator, TransformerMixin):
         return np.concatenate(out, axis=1)
 
 
-class EuclideanAlign(BaseEstimator, TransformerMixin):
-    """Per-recording whitening by the mean spatial covariance (He & Wu, 2020).
-
-    Unsupervised: uses the *unlabelled* trials of whichever recording it is
-    handed. It removes a large part of the between-subject covariance shift.
-    """
-    def fit(self, X, y=None): return self
-
-    def transform(self, X):
-        Xd = X.astype(np.float64, copy=False)
-        C = np.einsum("nct,ndt->cd", Xd, Xd) / (X.shape[0] * X.shape[-1])
-        C += 1e-10 * np.trace(C) / C.shape[0] * np.eye(C.shape[0])
-        w, V = np.linalg.eigh(C)
-        R = V @ np.diag(w ** -0.5) @ V.T
-        return np.einsum("cd,ndt->nct", R.astype(X.dtype), X)
-
-
 def csp_lda(n_components=6, reg=0.1):
     return Pipeline([
         ("csp", CSP(n_components=n_components, reg=reg, log=True,
