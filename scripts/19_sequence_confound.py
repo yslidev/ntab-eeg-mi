@@ -14,9 +14,12 @@ alternates. Two consequences, both measured here:
      period predicts the upcoming label above chance without containing any
      information about it.
 
-The decisive test is to split trials by whether the label repeated. If the
-pre-cue window works only through the previous trial, it should be right on
-repeats and wrong on alternations, in mirror image.
+The decisive test is to split trials by whether the label repeated. The model
+is *trained* on pre-cue windows against current labels, and 77% of its training
+trials alternate, so it learns the rule "whatever the previous trial was,
+predict the other one". That rule is right on alternations and wrong on
+repeats, in mirror image about chance. Genuine advance information about the
+upcoming trial would instead be above chance on both.
 """
 import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
@@ -124,8 +127,9 @@ for name, m in [("PRE-CUE -> current, trials where label REPEATED", rep),
     lo, hi = E.binom_ci(k, n)
     rec(tag=name, acc=k / n, lo=lo, hi=hi, n=n)
 
-print("\nIf the pre-cue window only carries the previous trial, accuracy on the")
-print("current label should sit ABOVE chance on repeats and BELOW chance on")
-print("alternations. If it carried genuine advance information it would be")
-print("above chance on both.")
+print("\nThe model is trained on pre-cue windows against current labels, and 77%")
+print("of training trials alternate, so it learns 'predict the opposite of the")
+print("previous trial'. That rule is right on alternations and wrong on repeats,")
+print("mirrored about chance. Genuine advance information would be above chance")
+print("on both.")
 print("\nwrote", OUT)

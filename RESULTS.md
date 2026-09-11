@@ -160,6 +160,19 @@ Each family tuned on its own regularisation before comparison, then band and win
 | F LOSO + 24 calib | 70.1% | [67.3, 72.8] | 70.0% | 1095 |
 | F LOSO + 32 calib | 70.7% | [67.0, 74.2] | 70.1% | 631 |
 
+## 4c. The cue sequence is not random
+
+Consecutive trials in a run carry different labels 76.8% of the time (lag-1 correlation -0.54). These rows separate what that structure explains from what it does not.
+
+| test | accuracy | 95% CI | trials |
+|---|---|---|---|
+| task window -> CURRENT label | 69.3% | [67.4, 71.1] | 2487 |
+| task window -> PREVIOUS label (looks like carry-over) | 61.0% | [59.0, 63.0] | 2313 |
+| PRE-CUE rest -> CURRENT label | 55.6% | [53.6, 57.6] | 2487 |
+| PRE-CUE rest -> PREVIOUS label | 63.7% | [61.7, 65.7] | 2313 |
+| PRE-CUE -> current, trials where label REPEATED | 40.3% | [36.1, 44.6] | 541 |
+| PRE-CUE -> current, trials where label ALTERNATED | 60.7% | [58.3, 62.9] | 1772 |
+
 ## 4b. What the easy splits would have told me
 
 | split | accuracy | 95% CI | trials |
@@ -234,12 +247,22 @@ Each family tuned on its own regularisation before comparison, then band and win
 |---|---|---|
 | keep everything [3975 epochs] | 69.3% | [67.4, 71.1] |
 | drop worst 1% of epochs [3935 epochs] | 69.2% | [67.3, 71.0] |
+| drop worst 5% of epochs [3776 epochs] | 69.1% | [67.2, 71.0] |
+| drop worst 20% of epochs [3180 epochs] | 68.7% | [66.7, 70.7] |
 
-## 6. EEGNet
+### early-window
 
-| configuration | test acc | 95% CI | train acc | per-subject mean | s |
-|---|---|---|---|---|---|
-| EEGNet cross-subject (all train subj) | 50.7% | [48.7, 52.7] | 53.5% | 50.7% | 1821 |
+| control | accuracy | 95% CI |
+|---|---|---|
+| 0.0-2.0 s, all 64 [64 ch] | 71.0% | [69.1, 72.7] |
+| 0.0-2.0 s, sensorimotor [15 ch] | 67.6% | [65.8, 69.5] |
+| 0.0-2.0 s, parieto-occipital [17 ch] | 59.6% | [57.7, 61.6] |
+| 0.5-3.5 s, all 64 [64 ch] | 69.3% | [67.4, 71.1] |
+| 0.5-3.5 s, sensorimotor [15 ch] | 66.1% | [64.2, 68.0] |
+| 0.5-3.5 s, parieto-occipital [17 ch] | 59.8% | [57.8, 61.7] |
+| 2.0-4.0 s, all 64 [64 ch] | 62.0% | [60.1, 63.9] |
+| 2.0-4.0 s, sensorimotor [15 ch] | 60.6% | [58.6, 62.5] |
+| 2.0-4.0 s, parieto-occipital [17 ch] | 55.6% | [53.6, 57.6] |
 
 ## 7. Predicting who is decodable from a resting recording
 

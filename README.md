@@ -51,12 +51,24 @@ Roughly 2 GB, a couple of minutes.
 ## Predicting
 
 ```bash
-python predict.py ~/mne_data/MNE-eegbci-data/files/eegmmidb/1.0.0/S042/S042R04.edf
+python predict.py ~/mne_data/MNE-eegbci-data/files/eegmmidb/1.0.0/S034/S034R04.edf
+```
+
+```
+S034R04.edf: 15 trials  accuracy 1.000  (15/15)
+
+pooled accuracy over 1 file(s), 15 trials: 1.0000
 ```
 
 It takes any number of raw EDF paths, prints per-file accuracy when the file
-carries `T1`/`T2` annotations, and writes per-trial predictions with `--out`.
-Label 0 is the left fist, label 1 is the right fist.
+carries `T1`/`T2` annotations, and writes per-trial predictions with `--out`
+(file, trial index, onset in seconds, predicted label, probability of right
+fist, and the true label when one is available). Label 0 is the left fist,
+label 1 is the right fist.
+
+S034 is one of the twelve quarantined subjects and one of the easy ones; across
+all twelve the model scores 76.3%, and three of them are at chance. The
+per-subject spread is the point, not the headline average.
 
 To rebuild the model from scratch:
 
@@ -98,7 +110,8 @@ Full tables in [`RESULTS.md`](RESULTS.md); figures in `figures/`; the reasoning
 behind each number, including the attempts that failed, in
 [`ANALYSIS_LOG.md`](ANALYSIS_LOG.md).
 
-**Two numbers, and the second is the one I defend.**
+**The number I defend: 69.3%,** and a floor of 59.8% under the strictest
+reading.
 
 - **69.3%** on imagined left-fist versus right-fist for a person the model has
   never seen, over the conventional 0.5 to 3.5 s window. 58 evaluation subjects,
@@ -328,13 +341,30 @@ trials.
 
 **Placebo windows, and the surprise in them.** Two controls came back above
 chance. The 2 s of rest *before* the cue predicts the upcoming label at 55.6%,
-and the task window predicts the *previous* trial's label at 61.0%. Neither is
-what it looks like. Consecutive cues in a run differ 76.8% of the time, so the
-sequence strongly alternates; given 69.3% on the current label, 60.4% on the
-previous label follows arithmetically, and a lateralised trace of the previous
-trial in the rest period predicts the next label without containing any
-information about it. `ANALYSIS_LOG.md` section 10 works this through and
-`scripts/19_sequence_confound.py` runs the test that separates the two readings.
+and the task window predicts the *previous* trial's label at 61.0%. Read
+naively, the pipeline leaks and trials are not independent.
+
+Neither is true. Consecutive cues in a run carry different labels 76.8% of the
+time, lag-1 correlation −0.54: the sequence strongly alternates, and I had
+assumed it was random. Given 69.3% on the current label, 60.3% on the previous
+one follows arithmetically; observed 61.0%, so there is nothing left for genuine
+carry-over to explain. And the rest period sits 2 to 4 s after the previous
+movement, which is when lateralised beta rebound peaks, so it carries a trace of
+the previous trial and predicts the next label without containing any
+information about it.
+
+The test that separates the two readings splits trials by whether the label
+repeated:
+
+| test | accuracy |
+|---|---|
+| pre-cue rest → the **previous** trial's label | 63.7% |
+| pre-cue rest → the **current** label, on alternations | 60.7% |
+| pre-cue rest → the **current** label, on repeats | **40.3%** |
+
+Mirrored about chance, which is the signature of a model that has learned
+"predict the opposite of the previous trial" and nothing else. Genuine advance
+information would be above chance on both.
 
 ## How much of this is the person rather than the task
 

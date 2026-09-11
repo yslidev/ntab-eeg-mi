@@ -300,10 +300,23 @@ current one; the pre-cue window manages 55.6%, which is a weak trace, not a
 leak of future information.
 
 `scripts/19_sequence_confound.py` runs the decisive test: split trials by
-whether the label repeated. If the pre-cue window works only through the
-previous trial, its accuracy on the current label must sit above chance on
-repeats and *below* chance on alternations, in mirror image. Genuine advance
-information would be above chance on both.
+whether the label repeated. The model is *trained* on pre-cue windows against
+current labels, and 77% of its training trials alternate, so if the window only
+carries the previous trial the model will learn the rule "predict the opposite
+of whatever the previous trial was". That rule is right on alternations and
+wrong on repeats, mirrored about chance. Genuine advance information about the
+upcoming trial would instead be above chance on both.
+
+| test | accuracy |
+|---|---|
+| pre-cue rest → the **previous** trial's label | 63.7% |
+| pre-cue rest → the **current** label, trials where the label alternated | 60.7% |
+| pre-cue rest → the **current** label, trials where the label repeated | **40.3%** |
+
+Exactly the mirror image, and the two halves reconstruct the pooled figure:
+0.768 × 0.607 + 0.232 × 0.403 = 0.559, against 0.556 observed. The pre-cue
+window carries a clear trace of the *previous* trial and no information at all
+about the current one. The 55.6% is entirely the stimulus sequence.
 
 What I take from this. The pre-cue placebo is the right control to run, and it
 would have been easy to report "55.6%, above chance, therefore my pipeline
