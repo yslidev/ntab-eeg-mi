@@ -230,4 +230,51 @@ rec("cross-paradigm", "SAME subject: executed -> imagined", pooled_acc=acc,
     pooled_lo=lo, pooled_hi=hi, mean_sub_acc=float(np.mean(accs)),
     sd_sub_acc=float(np.std(accs)), n_subjects=len(accs), n_trials=int(sum(ns)))
 
+# =====================================================================
+# 8. DOES CLEANING MATTER? The pipeline does no artefact rejection, no ICA
+#    and no channel interpolation. That is a choice, and it should be
+#    defended with a measurement rather than an assertion: drop the noisiest
+#    epochs at several thresholds and see whether anything moves.
+# =====================================================================
+Xq, _, _ = cached.prepare(es, band=CFG.BAND, window=CFG.WINDOW)
+p2p = (Xq.max(-1) - Xq.min(-1)).max(1) * 1e6          # worst channel, per epoch, uV
+print(f"\npeak-to-peak within 8-30 Hz, per epoch (uV): "
+      f"median {np.median(p2p):.0f}, p90 {np.percentile(p2p, 90):.0f}, "
+      f"p99 {np.percentile(p2p, 99):.0f}, max {p2p.max():.0f}", flush=True)
+Xqa = chosen.featurize(Xq, sub)
+del Xq; gc.collect()
+for tag, thr in [("keep everything", np.inf),
+                 ("drop worst 1% of epochs", np.percentile(p2p, 99)),
+                 ("drop worst 5% of epochs", np.percentile(p2p, 95)),
+                 ("drop worst 20% of epochs", np.percentile(p2p, 80))]:
+    m = p2p <= thr
+    r = E.loso(Xqa[m], y[m], sub[m], run[m], MAKE,
+               subjects=CFG.EVAL_SUBJECTS, n_jobs=JOBS)
+    rec("artefact", f"{tag} [{m.sum()} epochs]", **E.summarize(r))
+del Xqa; gc.collect()
+
+
+# =====================================================================
+# 9. IS THE EARLY WINDOW VISUAL? In BCI2000's protocol the cue is a target
+#    that appears on the LEFT or RIGHT side of the screen, and it stays up
+#    while the subject performs the trial. A lateralised visual stimulus
+#    produces lateralised occipital activity, and that would be decodable
+#    without any motor imagery at all. The window sweep found 0-2 s after
+#    the cue to be markedly better than 0.5-3.5 s, which is exactly what a
+#    visual contribution would look like. So: split both windows by
+#    electrode region and see where each one's accuracy lives.
+# =====================================================================
+for win in [(0.0, 2.0), (0.5, 3.5), (2.0, 4.0)]:
+    for tag, picks in [("all 64", None), ("sensorimotor", D.MOTOR_CH),
+                       ("parieto-occipital", D.OCCIPITAL_CH)]:
+        Xp, cp, _ = cached.prepare(es, band=CFG.BAND, window=win, picks=picks)
+        n_ch = Xp.shape[1]
+        k = min(chosen.N_COMPONENTS, max(2, (n_ch // 2) * 2 - 2))
+        Xw = chosen.featurize(Xp, sub); del Xp; gc.collect()
+        r = E.loso(Xw, y, sub, run, lambda k=k: models.covcsp_lda(k, chosen.SHRINKAGE),
+                   subjects=CFG.EVAL_SUBJECTS, n_jobs=JOBS)
+        rec("early-window", f"{win[0]}-{win[1]} s, {tag} [{n_ch} ch]", **E.summarize(r))
+        del Xw; gc.collect()
+
+
 print("\nwrote", OUT)

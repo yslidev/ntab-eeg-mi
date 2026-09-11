@@ -75,10 +75,20 @@ print(f"resting features for {len(rest)} subjects")
 
 # --- join to per-subject decoding accuracy -------------------------------
 acc = pd.read_csv("results/per_subject_accuracy.csv").set_index("subject")
+
+# Per-subject accuracy on ~43 trials has a standard error of about 7.6 points,
+# which attenuates any correlation badly. Pooling a subject's imagined and
+# executed trials doubles the trial count and brings that down to about 5.4.
+rowsp = pd.read_csv("results/per_subject_rows.csv")
+rowsp = rowsp[(~rowsp.shuffled) & (rowsp.regime.str.startswith("C"))]
+both = (rowsp.assign(k=rowsp.acc * rowsp.n).groupby("subject")
+        .agg(k=("k", "sum"), n=("n", "sum")))
+acc["acc_loso_both_paradigms"] = both.k / both.n
 df = rest.join(acc, how="inner").dropna(subset=["acc_loso"])
 print(f"joined with decoding accuracy for {len(df)} subjects\n")
 
-targets = [c for c in ["acc_loso", "acc_within_run"] if c in df.columns]
+targets = [c for c in ["acc_loso", "acc_loso_both_paradigms", "acc_within_run"]
+           if c in df.columns]
 feats = [c for c in rest.columns]
 res = []
 for tgt in targets:

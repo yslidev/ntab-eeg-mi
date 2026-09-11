@@ -31,7 +31,8 @@ def one(s):
     tr, te = sub != s, sub == s
     mdl = clone(chosen.make()).fit(Cov[tr], y[tr])
     d = mdl.decision_function(Cov[te])
-    return dict(subject=int(s), scores=d, y=y[te])
+    return dict(subject=int(s), scores=d, y=y[te],
+                run=es.run[te], trial=es.trial[te])
 
 
 res = Parallel(n_jobs=5)(delayed(one)(s) for s in CFG.EVAL_SUBJECTS)
@@ -51,6 +52,17 @@ for r in res:
         auc=float(stats.rankdata(d)[yy == 1].mean() / len(d) if len(set(yy)) > 1 else np.nan)))
 df = pd.DataFrame(rows)
 df.to_csv("results/subject_bias.csv", index=False)
+
+# per-trial record, for the non-stationarity analysis below
+trial_rows = []
+for r in res:
+    for i in range(len(r["y"])):
+        trial_rows.append(dict(subject=r["subject"], run=int(r["run"][i]),
+                               trial=int(r["trial"][i]), y=int(r["y"][i]),
+                               score=float(r["scores"][i]),
+                               correct=int((r["scores"][i] > 0) == r["y"][i])))
+tr_df = pd.DataFrame(trial_rows)
+tr_df.to_csv("results/per_trial_predictions.csv", index=False)
 
 n = df.n.sum()
 acc_raw = float((df.acc_raw * df.n).sum() / n)
@@ -114,3 +126,27 @@ ax.set_xlabel("threshold at 0"); ax.set_ylabel("threshold at subject's median")
 ax.set_title(f"pooled {acc_raw*100:.1f}% -> {acc_cen*100:.1f}%", fontsize=10)
 fig.tight_layout(); fig.savefig("figures/fig10_subject_bias.png", dpi=150)
 print("\nwrote figures/fig10_subject_bias.png")
+
+# =====================================================================
+# Does the signal hold up across the session? The three imagined runs are
+# separated by other runs, so run 12 happens many minutes after run 4.
+# =====================================================================
+print("\n=== non-stationarity within a session ===")
+g = tr_df.groupby("run").agg(n=("correct", "size"), k=("correct", "sum"))
+g["acc"] = g.k / g.n
+for r_, row in g.iterrows():
+    lo, hi = E.binom_ci(int(row.k), int(row.n))
+    print(f"run {int(r_):2d}: {row.acc*100:5.2f}%  [{lo*100:.1f}, {hi*100:.1f}]  "
+          f"n={int(row.n)}")
+from scipy.stats import chi2_contingency
+tab = np.array([[row.k, row.n - row.k] for _, row in g.iterrows()])
+chi2, pv, _, _ = chi2_contingency(tab)
+print(f"difference across runs: chi2={chi2:.2f}, p={pv:.3f}")
+
+print("\naccuracy by trial position within a run:")
+tp = tr_df.groupby("trial").agg(n=("correct", "size"), k=("correct", "sum"))
+tp["acc"] = tp.k / tp.n
+print("  " + "  ".join(f"{int(i)}:{v*100:.0f}" for i, v in tp.acc.items()))
+rho_, pv_ = stats.spearmanr(tr_df.trial, tr_df.correct)
+print(f"trial position vs correctness: rho={rho_:+.4f}, p={pv_:.3f}, "
+      f"n={len(tr_df)}")

@@ -28,11 +28,12 @@ def aligned(X, subject):
 
 
 # ---------------- (a) time-resolved ---------------------------------------
-centres = np.arange(-1.75, 4.1, 0.25)
+WIN = 0.75                 # short enough to localise a cue-evoked response
+centres = np.arange(-1.75, 4.1, 0.20)
 rows = []
 for c in centres:
     t0 = time.time()
-    X, chs, _ = cached.prepare(es, band=CFG.BAND, window=(c - 0.5, c + 0.5))
+    X, chs, _ = cached.prepare(es, band=CFG.BAND, window=(c - WIN / 2, c + WIN / 2))
     Xa = chosen.featurize(X, es.subject)
     del X
     r = E.loso(Xa, es.y, es.subject, es.run, chosen.make, subjects=SUBSET, n_jobs=6)
@@ -53,7 +54,7 @@ ax.axvline(0, color="#c53030", lw=1.2)
 ax.text(-1.25, ax.get_ylim()[1] * 0.995, "rest (pre-cue)", ha="center",
         va="top", fontsize=9, color="#555")
 ax.text(0.06, 0.5015, "cue", color="#c53030", fontsize=9)
-ax.set_xlabel("centre of 1 s window, seconds from cue")
+ax.set_xlabel(f"centre of {WIN:g} s window, seconds from cue")
 ax.set_ylabel("cross-subject accuracy")
 ax.set_title("Time-resolved decoding (LOSO + alignment, every 2nd EVAL subject)",
              fontsize=10)

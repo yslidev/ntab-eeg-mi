@@ -164,3 +164,47 @@ It was also not learning: training accuracy sat at 0.52 after 30 epochs with a
 loss stuck at 0.695. Dropout 0.5 plus label smoothing plus a cosine schedule
 from 1e-3 was too conservative for a 2,000-parameter model on 3,500 samples.
 Switched to one-cycle at 3e-3, dropout 0.4, no label smoothing.
+
+### 8. The window sweep found something I did not want to find
+
+Tuning the analysis window on DEV folds produced this:
+
+| window after cue | cross-subject accuracy |
+|---|---|
+| 0.0 - 2.0 s | **74.4%** |
+| 0.0 - 4.0 s | 71.6% |
+| 0.5 - 2.5 s | 69.0% |
+| 0.5 - 3.5 s | 68.3% |
+
+Two windows of identical length, 0.0-2.0 and 0.5-2.5, differ by five and a
+half points. All of the advantage is in the first half second after the cue.
+
+Sensorimotor desynchronisation does not behave like that. It builds over
+roughly half a second and is sustained for the length of the trial, so if the
+signal were purely sensorimotor, shifting a 2 s window forward by 500 ms should
+cost very little. Something sharp and early is contributing.
+
+The likely culprit is the protocol. In BCI2000's version of this task the cue
+is a target that appears on the **left or right side of the screen**, and it
+stays on screen while the subject performs the trial. A lateralised visual
+stimulus produces a lateralised occipital response. A classifier that picks
+that up is decoding where the target was, not what the subject imagined, and it
+would be worthless in a real BCI, where by definition nothing tells the screen
+which hand the user is thinking about.
+
+I am deliberately **not** taking the 74.4% window. Three things decide it, and
+all three are in the results:
+
+1. `scripts/12_interpretation.py` slides a 0.75 s window across the whole epoch.
+   A sharp early peak means evoked; a slow rise that plateaus means sensorimotor.
+2. `scripts/06_controls.py` block 9 splits both windows by electrode region. If
+   parieto-occipital electrodes carry the 0-2 s advantage while the
+   sensorimotor strip does not, that settles it.
+3. The band sweep is already a weak argument against a purely visual account:
+   13-30 Hz alone reaches 64.2%, and a visual evoked response does not live in
+   the beta band.
+
+The headline number stays on the 0.5-3.5 s window, chosen before I saw any of
+this, because that is the window whose result would survive in a setting where
+no lateralised cue is on the screen. Reporting the higher number as the
+headline would be optimising the metric rather than the claim.

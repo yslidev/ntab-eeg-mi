@@ -56,7 +56,8 @@ Scripts are numbered in dependency order.
 | `01_audit.py` | structural audit of all 763 recordings |
 | `02_build_cache.py` | wide broadband epoch cache |
 | `03_lateralisation.py` | establishes which annotation is which hand |
-| `04_model_selection.py` | feature/classifier/band/window sweep, DEV subjects only |
+| `04_model_selection.py` | first selection pass: feature and classifier families, DEV only |
+| `15_selection2.py`, `15b_bands_windows.py` | second pass: each family tuned, then band and window, DEV only |
 | `05_main_regimes.py` | the headline table, EVAL subjects |
 | `06_controls.py` | placebo windows, electrode lesions, subject identity, transfer |
 | `07_deep.py` | EEGNet, including its overfitting behaviour |
@@ -65,7 +66,16 @@ Scripts are numbered in dependency order.
 | `10_who_is_decodable.py` | resting-state predictors of per-subject accuracy |
 | `11_holdout_check.py` | runs `predict.py` on the 12 untouched subjects |
 | `12_interpretation.py` | time-resolved decoding and scalp weight maps |
+| `14_subject_bias.py` | per-subject decision bias and within-session drift |
 | `13_make_results_md.py` | regenerates `RESULTS.md` |
+
+---
+
+## Results
+
+Full tables in [`RESULTS.md`](RESULTS.md); figures in `figures/`. The summary
+is in the section below, and the reasoning behind each number is in
+[`ANALYSIS_LOG.md`](ANALYSIS_LOG.md).
 
 ---
 
@@ -282,3 +292,25 @@ cross-subject accuracy rises by about four points as a result.
 The cost is that it needs a batch of the subject's data before it can predict
 anything, which is why I measure separately what happens when the whitening is
 estimated from a short calibration block instead of the whole recording.
+
+## On noise, and on not cleaning
+
+There is no ICA in this pipeline, no epoch rejection, no channel
+interpolation and no re-referencing. That is a decision, so it comes with a
+measurement rather than an assertion.
+
+The audit found no flat channels, no ADC clipping (the largest amplitudes are
+isolated samples on isolated channels, not a rail), and no runs with
+pathological durations beyond the four excluded subjects.
+`scripts/06_controls.py` then drops the noisiest 1%, 5% and 20% of epochs by
+within-band peak-to-peak amplitude and re-runs the whole cross-subject
+evaluation. If a cleaning step were needed, throwing away the worst fifth of
+the data would move the number.
+
+The reasoning behind the choice: every cleaning step is a judgement call with
+a knob on it, and knobs that are tuned while looking at accuracy are how an
+evaluation quietly becomes circular. Band-passing to 8-30 Hz already removes
+the two artefact classes that matter most here, since eye blinks live below
+8 Hz and drift below 1 Hz. Muscle artefact above 30 Hz is also filtered out,
+and the electrode-lesion control is what tells us whether what remains is
+sensorimotor or something facial.
