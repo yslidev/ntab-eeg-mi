@@ -102,3 +102,52 @@ folds. `predict.py` is then checked once on the HOLDOUT recordings.
 
 This costs accuracy: I am reporting a number from subjects I never tuned on.
 It buys the only thing that makes the number worth reporting.
+
+### 6. Alignment helps one model family and hurts another
+
+Euclidean alignment whitens each recording by its own mean spatial covariance,
+so every subject's mean covariance becomes the identity. It is the standard
+first thing to try for cross-subject EEG. On DEV folds it did this:
+
+| model | no alignment | with alignment |
+|---|---|---|
+| CSP + LDA (6 components) | 61.6% | **68.3%** |
+| log-variance + logistic regression | 57.6% | 64.9% |
+| tangent space, log-Euclidean | 62.8% | 59.5% |
+| tangent space, affine-invariant | 56.7% | 59.7% |
+
+My first reaction was that the alignment was broken, because it made the
+tangent-space model worse. It is not: after alignment each subject's mean
+covariance is the identity to within 3e-6 in Frobenius norm, and the
+between-subject dispersion of trace-normalised mean covariances drops from
+14.6 to 3e-6. The transform does exactly what it claims.
+
+The split makes sense once you look at what each model needs. CSP solves a
+generalised eigenvalue problem on two class covariances pooled across
+subjects; if every subject contributes a differently-scaled, differently-shaped
+covariance, that pooled problem is dominated by between-subject variation
+rather than between-class variation. Whitening each subject first puts them in
+a common frame and the filters become interpretable across people. The
+tangent-space models already take a matrix logarithm, which absorbs scale, and
+the projection point is the training-set mean covariance — whitening removes
+the very structure that made that reference point informative.
+
+The practical consequence is that the second half of the first sweep, which
+tuned band and window for the tangent-space model, was tuning the wrong model.
+`scripts/15_csp_sweep.py` is the follow-up pass on the family that actually won.
+
+### 7. A convolutional network that was too slow before it was too weak
+
+EEGNet at the native 160 Hz over a 3 s window ran at 19 s per training epoch on
+this laptop, which would have been about 14 hours for the folds I wanted. The
+cost is dominated by the first temporal convolution, which runs at full
+64-channel spatial resolution: the activation tensor is
+`batch x F1 x 64 channels x 481 samples`, and the whole thing is
+memory-bandwidth bound, not compute bound. Halving the sample rate to 80 Hz
+(ample for an 8-30 Hz phenomenon) and halving the kernel length cut it by
+roughly a factor of four.
+
+It was also not learning: training accuracy sat at 0.52 after 30 epochs with a
+loss stuck at 0.695. Dropout 0.5 plus label smoothing plus a cosine schedule
+from 1e-3 was too conservative for a 2,000-parameter model on 3,500 samples.
+Switched to one-cycle at 3e-3, dropout 0.4, no label smoothing.

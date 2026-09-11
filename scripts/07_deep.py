@@ -6,10 +6,11 @@ time, purely for compute. Training sets still exclude every test subject.
 import sys, pathlib, time, argparse
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 import numpy as np, pandas as pd
-import cached, models, deep, evaluation as E, config as CFG
+import cached, models, deep, chosen, evaluation as E, config as CFG
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--epochs", type=int, default=200)
+ap.add_argument("--epochs", type=int, default=100)
+ap.add_argument("--folds", type=int, default=7)
 ap.add_argument("--out", default="results/deep.csv")
 args = ap.parse_args()
 
@@ -20,12 +21,18 @@ def rec(**kw):
           f"train={kw.get('train_acc', float('nan')):.3f} {kw['secs']:.0f}s", flush=True)
 
 es = cached.load_pool(CFG.PARADIGM)
+# 80 Hz is ample for an 8-30 Hz phenomenon and halves the dominant cost, which
+# is the temporal convolution running at full 64-channel spatial resolution.
 X, chs, _ = cached.prepare(es, band=(4.0, 38.0), window=CFG.WINDOW)
-X = X.astype(np.float32)
+# Same per-recording whitening the classical pipeline uses, so the comparison
+# is about the model and not about the preprocessing.
+X = chosen.align(X, es.subject)
+X = np.ascontiguousarray(X[..., ::2], dtype=np.float32)
+print(f"EEGNet input: {X.shape} at 80 Hz, Euclidean-aligned")
 y, sub = es.y, es.subject
 rng = np.random.default_rng(CFG.SEED)
 
-GROUPS = np.array_split(CFG.EVAL_SUBJECTS, 13)
+GROUPS = np.array_split(CFG.EVAL_SUBJECTS, args.folds)
 
 
 def cross_subject(train_pool, tag, epochs, seed=0):
@@ -74,7 +81,7 @@ cross_subject(CFG.ALL_SUBJECTS, "EEGNet cross-subject, SHUFFLED labels", args.ep
 y = y_real
 
 # 3. how much does it need? accuracy vs number of training subjects
-for n_tr in [8, 16, 32, 64, len(CFG.ALL_SUBJECTS)]:
+for n_tr in [8, 24, 64]:
     pool = CFG.DEV_SUBJECTS if n_tr <= len(CFG.DEV_SUBJECTS) else CFG.ALL_SUBJECTS
     pool = rng.choice(CFG.ALL_SUBJECTS, size=min(n_tr, len(CFG.ALL_SUBJECTS)),
                       replace=False)
@@ -84,18 +91,18 @@ for n_tr in [8, 16, 32, 64, len(CFG.ALL_SUBJECTS)]:
 t0 = time.time()
 from sklearn.model_selection import StratifiedKFold
 per_sub, tr_accs = [], []
-for s in CFG.EVAL_SUBJECTS[:25]:
+for s in CFG.EVAL_SUBJECTS[:15]:
     m = sub == s
     Xs, ys_ = X[m], y[m]
     pred = np.zeros(len(ys_), int)
     for tr, te in StratifiedKFold(5, shuffle=True, random_state=0).split(Xs, ys_):
-        p, info = deep.train_eval(Xs[tr], ys_[tr], Xs[te], ys_[te], epochs=60)
+        p, info = deep.train_eval(Xs[tr], ys_[tr], Xs[te], ys_[te], epochs=50)
         pred[te] = p; tr_accs.append(info["train_acc"])
     k = int((pred == ys_).sum()); n = len(ys_)
     lo, hi = E.binom_ci(k, n)
     per_sub.append(dict(subject=int(s), n=n, acc=k / n, ci_lo=lo, ci_hi=hi,
                         sig_thresh=E.binom_sig_threshold(n)))
-rec(tag="EEGNet within-subject (random CV, 25 subj)",
+rec(tag="EEGNet within-subject (random CV, 15 subj)",
     train_acc=float(np.mean(tr_accs)), secs=time.time() - t0,
     n_train_subjects=1, **E.summarize(per_sub))
 

@@ -48,17 +48,19 @@ def _standardise(X):
     return (X - mu) / sd
 
 
-def train_eval(Xtr, ytr, Xte, yte, Xva=None, yva=None, epochs=200, bs=64,
-               lr=1e-3, wd=1e-4, device=None, seed=0, verbose=False):
+def train_eval(Xtr, ytr, Xte, yte, Xva=None, yva=None, epochs=100, bs=64,
+               lr=3e-3, wd=1e-4, device=None, seed=0, verbose=False, kern=32):
     torch.manual_seed(seed); np.random.seed(seed)
     device = device or ("mps" if torch.backends.mps.is_available() else "cpu")
     Xtr, Xte = _standardise(Xtr), _standardise(Xte)
     tr = torch.tensor(Xtr, dtype=torch.float32)
     yt = torch.tensor(ytr, dtype=torch.long)
     te = torch.tensor(Xte, dtype=torch.float32).to(device)
-    net = EEGNet(Xtr.shape[1], Xtr.shape[2]).to(device)
+    net = EEGNet(Xtr.shape[1], Xtr.shape[2], kern=kern, drop=0.4).to(device)
     opt = torch.optim.AdamW(net.parameters(), lr=lr, weight_decay=wd)
-    sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, epochs)
+    steps = max(1, int(np.ceil(len(ytr) / bs)))
+    sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=lr, epochs=epochs,
+                                                steps_per_epoch=steps, pct_start=0.25)
     if Xva is not None:
         va = torch.tensor(_standardise(Xva), dtype=torch.float32).to(device)
         yv = torch.tensor(yva, dtype=torch.long).to(device)
@@ -72,12 +74,12 @@ def train_eval(Xtr, ytr, Xte, yte, Xva=None, yva=None, epochs=200, bs=64,
             idx = perm[i:i + bs]
             xb, yb = tr[idx].to(device), yt[idx].to(device)
             opt.zero_grad()
-            loss = F.cross_entropy(net(xb), yb, label_smoothing=0.05)
+            loss = F.cross_entropy(net(xb), yb)
             loss.backward()
             nn.utils.clip_grad_norm_(net.parameters(), 1.0)
             opt.step()
+            sched.step()
             tot += loss.item() * len(idx)
-        sched.step()
         if Xva is not None and (ep + 1) % 5 == 0:
             net.eval()
             with torch.no_grad():

@@ -6,11 +6,12 @@ Usage
     python predict.py path/to/S042R04.edf
     python predict.py data/*.edf --out preds.csv
 
-The model was trained on 105 other subjects. It is applied here with the same
-unsupervised per-recording alignment used at training time: the covariance of
-the file's own trials is used to whiten it. That uses no labels, so it is legal
-on unlabelled data, but it does mean predictions for a file depend mildly on
-the other trials in that same file.
+The model was trained on 93 other subjects. It is applied here with the same
+unsupervised per-recording alignment used at training time: the mean spatial
+covariance of the file's own trials is used to whiten it. That uses no labels,
+so it is legal on unlabelled data, but it does mean a file's predictions depend
+mildly on the other trials in the same file. scripts/06_controls.py measures
+what that is worth.
 """
 from __future__ import annotations
 import argparse, pathlib, sys, warnings
@@ -81,16 +82,17 @@ def epochs_from_edf(edf_path, meta):
 
 def predict_file(edf_path, model=None):
     """Return (labels, probabilities, onsets, y_true_or_None)."""
-    from models import EuclideanAlign, precompute_cov
+    from models import AlignShrunk, precompute_cov
     m = model or load_model()
     edf_path = pathlib.Path(edf_path)
     X, y_true, onsets = epochs_from_edf(edf_path, m)
-    if m.get("euclidean_align", True):
-        X = EuclideanAlign().transform(X)
-    Cov = precompute_cov(X, m.get("cov_estimator", "oas"))
+    alpha = m.get("align_alpha", 1.0)
+    if alpha:
+        X = AlignShrunk(alpha=alpha).transform(X.astype(np.float64))
+    C = precompute_cov(X)
     pipe = m["pipeline"]
-    pred = pipe.predict(Cov)
-    proba = pipe.predict_proba(Cov)[:, 1] if hasattr(pipe, "predict_proba") else None
+    pred = pipe.predict(C)
+    proba = pipe.predict_proba(C)[:, 1] if hasattr(pipe, "predict_proba") else None
     return pred, proba, onsets, y_true
 
 

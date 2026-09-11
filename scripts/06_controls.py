@@ -1,35 +1,29 @@
 """Controls: what else could explain the number?
 
-Each block here is a way for the headline accuracy to be real-looking but
-wrong. We run them all on the same pipeline as the headline model.
+Each block is a way for the headline accuracy to look real and be wrong.
+All of them use the selected pipeline (src/chosen.py) unless stated.
 """
-import sys, pathlib, time
+import sys, pathlib, gc
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 import numpy as np, pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from pyriemann.tangentspace import TangentSpace
-import cached, models, data as D, evaluation as E, config as CFG
+import cached, models, chosen, data as D, evaluation as E, config as CFG
 
 OUT = pathlib.Path("results/controls.csv")
 rows = []
-MAKE = models.ts_lr_le
+MAKE = chosen.make
+JOBS = 6
 
 
 def rec(block, tag, **kw):
     rows.append(dict(block=block, tag=tag, **kw))
     pd.DataFrame(rows).to_csv(OUT, index=False)
-    acc = kw.get("pooled_acc", np.nan)
-    print(f"[{block}] {tag:<40} acc={acc:.4f} "
-          f"[{kw.get('pooled_lo', np.nan):.3f},{kw.get('pooled_hi', np.nan):.3f}]", flush=True)
-
-
-def align(X, subject):
-    ea = models.EuclideanAlign()
-    subs = np.unique(subject)
-    order = np.concatenate([np.where(subject == u)[0] for u in subs])
-    return np.concatenate([ea.transform(X[subject == u]) for u in subs])[np.argsort(order)]
+    print(f"[{block}] {tag:<46} acc={kw.get('pooled_acc', np.nan):.4f} "
+          f"[{kw.get('pooled_lo', np.nan):.3f},{kw.get('pooled_hi', np.nan):.3f}]",
+          flush=True)
 
 
 es = cached.load_pool(CFG.PARADIGM)
@@ -37,77 +31,87 @@ y, sub, run = es.y, es.subject, es.run
 
 # =====================================================================
 # 1. WINDOW PLACEBO. The 4.2 s before each cue is rest. If the pipeline
-#    decodes the upcoming label from it, the "decoding" is not the task.
+#    decodes the upcoming label from it, whatever it is decoding is not
+#    the task. The -2.4..-0.4 s variant leaves a wider guard band, because
+#    the band-pass is zero-phase and can smear energy backwards in time.
 # =====================================================================
-for tag, win in [("task window 0.5-3.5s", (0.5, 3.5)),
-                 ("PRE-CUE -2.0 to -0.2s", (-2.0, -0.2)),
-                 ("PRE-CUE -2.4 to -0.4s", (-2.4, -0.4)),
-                 ("late window 2.5-4.5s", (2.5, 4.5))]:
+for tag, win in [("task window 0.5-3.5 s", (0.5, 3.5)),
+                 ("PRE-CUE -2.0 to -0.2 s", (-2.0, -0.2)),
+                 ("PRE-CUE -2.4 to -0.4 s", (-2.4, -0.4)),
+                 ("late window 2.5-4.5 s", (2.5, 4.5))]:
     X, _, _ = cached.prepare(es, band=CFG.BAND, window=win)
-    Cov = models.precompute_cov(align(X, sub))
-    r = E.loso(Cov, y, sub, run, MAKE, subjects=CFG.EVAL_SUBJECTS, n_jobs=5)
+    Xa = chosen.featurize(X, sub); del X; gc.collect()
+    r = E.loso(Xa, y, sub, run, MAKE, subjects=CFG.EVAL_SUBJECTS, n_jobs=JOBS)
     rec("window", f"LOSO  {tag}", **E.summarize(r))
     m = np.isin(sub, CFG.EVAL_SUBJECTS)
-    r = E.within_subject(models.precompute_cov(X)[m], y[m], sub[m], run[m],
-                         MAKE, split="random", n_jobs=6)
+    r = E.within_subject(Xa[m], y[m], sub[m], run[m], MAKE, split="random", n_jobs=JOBS)
     rec("window", f"within/randomCV  {tag}", **E.summarize(r))
+    del Xa; gc.collect()
 
 # =====================================================================
 # 2. CHANNEL LESION. If a classifier restricted to occipital or frontal
 #    electrodes does as well as one on the sensorimotor strip, we are not
 #    decoding sensorimotor rhythm.
 # =====================================================================
-X, chs, _ = cached.prepare(es, band=CFG.BAND, window=CFG.WINDOW)
 for tag, picks in [("all 64 channels", None),
-                   ("sensorimotor strip (15)", D.MOTOR_CH),
-                   ("C3/Cz/C4 only (3)", ["C3", "Cz", "C4"]),
-                   ("frontal (17)", D.FRONTAL_CH),
-                   ("parieto-occipital (17)", D.OCCIPITAL_CH)]:
+                   ("sensorimotor strip", D.MOTOR_CH),
+                   ("C3/Cz/C4 only", ["C3", "Cz", "C4"]),
+                   ("frontal", D.FRONTAL_CH),
+                   ("parieto-occipital", D.OCCIPITAL_CH)]:
     Xp, cp, _ = cached.prepare(es, band=CFG.BAND, window=CFG.WINDOW, picks=picks)
-    Cov = models.precompute_cov(align(Xp, sub))
-    r = E.loso(Cov, y, sub, run, MAKE, subjects=CFG.EVAL_SUBJECTS, n_jobs=5)
-    rec("lesion", f"{tag} [{Xp.shape[1]} ch]", **E.summarize(r))
+    n_ch = Xp.shape[1]
+    k = min(chosen.N_COMPONENTS, max(2, (n_ch // 2) * 2 - 2))
+    Xa = chosen.featurize(Xp, sub); del Xp; gc.collect()
+    r = E.loso(Xa, y, sub, run, lambda k=k: models.covcsp_lda(k, chosen.SHRINKAGE),
+               subjects=CFG.EVAL_SUBJECTS, n_jobs=JOBS)
+    rec("lesion", f"{tag} [{n_ch} ch]", **E.summarize(r))
+    del Xa; gc.collect()
 
 # =====================================================================
 # 3. LABEL CARRY-OVER. Give each trial the label of the PREVIOUS trial in
-#    the same run. Above chance would mean trials are not independent.
+#    the same run. Above chance means trials are not independent.
 # =====================================================================
-Cov = models.precompute_cov(align(X, sub))
+X, chs, _ = cached.prepare(es, band=CFG.BAND, window=CFG.WINDOW)
+Xa = chosen.featurize(X, sub)
 y_prev = y.copy(); keep = np.ones(len(y), bool)
 for s in np.unique(sub):
     for r_ in np.unique(run[sub == s]):
-        m = np.where((sub == s) & (run == r_))[0]
-        m = m[np.argsort(es.trial[m])]
-        y_prev[m[1:]] = y[m[:-1]]
-        keep[m[0]] = False
-r = E.loso(Cov[keep], y_prev[keep], sub[keep], run[keep], MAKE,
-           subjects=CFG.EVAL_SUBJECTS, n_jobs=5)
+        idx = np.where((sub == s) & (run == r_))[0]
+        idx = idx[np.argsort(es.trial[idx])]
+        y_prev[idx[1:]] = y[idx[:-1]]
+        keep[idx[0]] = False
+r = E.loso(Xa[keep], y_prev[keep], sub[keep], run[keep], MAKE,
+           subjects=CFG.EVAL_SUBJECTS, n_jobs=JOBS)
 rec("carryover", "LOSO, label = PREVIOUS trial's class", **E.summarize(r))
 
 # =====================================================================
-# 4. WHO, NOT WHAT. How much subject identity is in these same features?
-#    Multi-class subject ID, trained on two runs and tested on the third,
-#    so it cannot rely on within-run continuity.
+# 4. WHO, NOT WHAT. How much subject identity is in these same signals?
+#    Probed with a tangent-space multinomial classifier rather than CSP,
+#    because this is a question about information content, not the model.
+#    Trained on two runs and tested on the third, so it cannot lean on
+#    within-run continuity.
 # =====================================================================
-def subject_id_decode(Cov, sub, run, label):
+def subject_id_decode(Cov, s_, r_, label):
     ts = Pipeline([("ts", TangentSpace(metric="logeuclid")), ("sc", StandardScaler()),
                    ("clf", LogisticRegression(C=1.0, max_iter=1500))])
-    runs = np.unique(run)
     accs = []
-    for held in runs:
-        tr, te = run != held, run == held
-        mdl = ts.fit(Cov[tr], sub[tr])
-        accs.append((mdl.predict(Cov[te]) == sub[te]).mean())
+    for held in np.unique(r_):
+        tr, te = r_ != held, r_ == held
+        accs.append((ts.fit(Cov[tr], s_[tr]).predict(Cov[te]) == s_[te]).mean())
     acc = float(np.mean(accs))
-    n_cls = len(np.unique(sub))
     rec("identity", label, pooled_acc=acc, pooled_lo=acc, pooled_hi=acc,
-        chance=1.0 / n_cls, n_classes=n_cls)
+        chance=1.0 / len(np.unique(s_)), n_classes=len(np.unique(s_)))
 
 
-subject_id_decode(Cov, sub, run, f"subject ID from MI trials ({len(np.unique(sub))}-way)")
+Cov_raw = models.precompute_cov(X)
+subject_id_decode(Cov_raw, sub, run,
+                  f"subject ID from MI trials, no alignment ({len(np.unique(sub))}-way)")
+del Cov_raw; gc.collect()
+Cov_al = Xa
+subject_id_decode(Cov_al, sub, run,
+                  f"subject ID from MI trials, after alignment ({len(np.unique(sub))}-way)")
 
-# same features, but from the eyes-open baseline run where nobody is doing anything
-base = D.load_epochs  # epoch run 1 into fixed 4 s windows
+# same probe on the eyes-open baseline run, where nobody is doing anything
 import mne
 Xb, sb, rb = [], [], []
 for s in np.unique(sub):
@@ -119,114 +123,111 @@ for s in np.unique(sub):
                    iir_params=dict(order=4, ftype="butter"), verbose="ERROR")
         ep = mne.make_fixed_length_epochs(raw, duration=3.0, overlap=0.0,
                                           preload=True, verbose="ERROR")
-        d = ep.get_data(copy=True)[:, :64, :480]
-        Xb.append(d); sb.append(np.full(len(d), s))
-        rb.append(np.arange(len(d)) % 3)          # pseudo-runs: split the rest run in 3
+        d = ep.get_data(copy=True)[:, :64, :480].astype(np.float32)
+        Xb.append(d); sb.append(np.full(len(d), s)); rb.append(np.arange(len(d)) % 3)
     except Exception:
         pass
 Xb = np.concatenate(Xb); sb = np.concatenate(sb); rb = np.concatenate(rb)
 subject_id_decode(models.precompute_cov(Xb), sb, rb,
                   f"subject ID from EYES-OPEN REST ({len(np.unique(sb))}-way)")
+del Xb; gc.collect()
 
 # =====================================================================
-# 5. CROSS-PARADIGM. Does a model trained on executed movement transfer
+# 5. IS THERE RUN-SPECIFIC NUISANCE AT ALL? If a classifier can tell which
+#    of a subject's three runs a trial came from, then random CV within a
+#    subject shares run-specific structure between train and test.
+# =====================================================================
+from sklearn.model_selection import StratifiedKFold
+accs = []
+for s in CFG.EVAL_SUBJECTS:
+    m = sub == s
+    if m.sum() < 30 or len(np.unique(run[m])) < 3:
+        continue
+    Cs, rs = Cov_al[m], run[m]
+    pred = np.zeros(len(rs))
+    for tr_i, te_i in StratifiedKFold(5, shuffle=True, random_state=0).split(Cs, rs):
+        mdl = Pipeline([("ts", TangentSpace(metric="logeuclid")),
+                        ("sc", StandardScaler()),
+                        ("clf", LogisticRegression(C=0.1, max_iter=2000))])
+        pred[te_i] = mdl.fit(Cs[tr_i], rs[tr_i]).predict(Cs[te_i])
+    accs.append((pred == rs).mean())
+rec("run-identity", "which of this subject's 3 runs is it? (3-way)",
+    pooled_acc=float(np.mean(accs)), pooled_lo=float(np.mean(accs)),
+    pooled_hi=float(np.mean(accs)), chance=1 / 3, n_subjects=len(accs))
+del Cov_al; gc.collect()
+
+# =====================================================================
+# 6. HOW MUCH DOES THE ALIGNMENT KNOW? The alignment is estimated from all
+#    of a test subject's trials, including the ones being predicted.
+#    Realistic deployment would estimate it from a calibration block.
+# =====================================================================
+def align_first_run_only(X, subject, run):
+    out = np.empty_like(X)
+    for u in np.unique(subject):
+        m = subject == u
+        cal = X[m & (run == np.unique(run[m])[0])].astype(np.float64)
+        C = np.einsum("nct,ndt->cd", cal, cal) / (len(cal) * cal.shape[-1])
+        C /= np.trace(C) / C.shape[0]
+        w, V = np.linalg.eigh(C)
+        R = (V @ np.diag(np.clip(w, 1e-12, None) ** -0.5) @ V.T).astype(X.dtype)
+        out[m] = np.einsum("cd,ndt->nct", R, X[m])
+    return out
+
+
+first_of = np.array([np.unique(run[sub == s])[0] for s in np.unique(sub)])
+first_map = dict(zip(np.unique(sub), first_of))
+later = np.array([run[i] != first_map[sub[i]] for i in range(len(run))])
+
+Xf = models.precompute_cov(align_first_run_only(X, sub, run))
+r = E.loso(Xf[later], y[later], sub[later], run[later], MAKE,
+           subjects=CFG.EVAL_SUBJECTS, n_jobs=JOBS)
+rec("align-scope", "align from 1st run only, test on runs 2-3", **E.summarize(r))
+del Xf; gc.collect()
+r = E.loso(Xa[later], y[later], sub[later], run[later], MAKE,
+           subjects=CFG.EVAL_SUBJECTS, n_jobs=JOBS)
+rec("align-scope", "align from all 3 runs, test on runs 2-3", **E.summarize(r))
+Xn = models.precompute_cov(X)
+r = E.loso(Xn[later], y[later], sub[later], run[later], MAKE,
+           subjects=CFG.EVAL_SUBJECTS, n_jobs=JOBS)
+rec("align-scope", "no alignment at all, test on runs 2-3", **E.summarize(r))
+del X, Xa, Xn; gc.collect()
+
+# =====================================================================
+# 7. CROSS-PARADIGM. Does a model trained on executed movement transfer
 #    to imagined movement?
 # =====================================================================
-ei = cached.load_pool("imagined"); ee = cached.load_pool("executed")
+ei, ee = cached.load_pool("imagined"), cached.load_pool("executed")
 Xi, _, _ = cached.prepare(ei, band=CFG.BAND, window=CFG.WINDOW)
 Xe, _, _ = cached.prepare(ee, band=CFG.BAND, window=CFG.WINDOW)
-Ci = models.precompute_cov(align(Xi, ei.subject))
-Ce = models.precompute_cov(align(Xe, ee.subject))
+Xi = chosen.featurize(Xi, ei.subject); Xe = chosen.featurize(Xe, ee.subject)
 
-for name, (Ctr, etr), (Cte, ete) in [
-        ("train EXECUTED -> test IMAGINED", (Ce, ee), (Ci, ei)),
-        ("train IMAGINED -> test EXECUTED", (Ci, ei), (Ce, ee))]:
+for name, (Atr, etr), (Ate, ete) in [
+        ("train EXECUTED -> test IMAGINED", (Xe, ee), (Xi, ei)),
+        ("train IMAGINED -> test EXECUTED", (Xi, ei), (Xe, ee))]:
     accs, ns = [], []
-    for s in CFG.EVAL_SUBJECTS:                  # still subject-disjoint
-        trm = etr.subject != s
-        tem = ete.subject == s
+    for s in CFG.EVAL_SUBJECTS:
+        trm, tem = etr.subject != s, ete.subject == s
         if tem.sum() == 0:
             continue
-        mdl = MAKE().fit(Ctr[trm], etr.y[trm])
-        p = mdl.predict(Cte[tem])
-        accs.append((p == ete.y[tem]).mean()); ns.append(tem.sum())
+        p = MAKE().fit(Atr[trm], etr.y[trm]).predict(Ate[tem])
+        accs.append((p == ete.y[tem]).mean()); ns.append(int(tem.sum()))
     acc = float(np.average(accs, weights=ns))
     lo, hi = E.binom_ci(round(acc * sum(ns)), sum(ns))
     rec("cross-paradigm", name, pooled_acc=acc, pooled_lo=lo, pooled_hi=hi,
         mean_sub_acc=float(np.mean(accs)), sd_sub_acc=float(np.std(accs)),
         n_subjects=len(accs), n_trials=int(sum(ns)))
 
-# within-subject cross-paradigm: same person, train on their executed trials
 accs, ns = [], []
 for s in CFG.EVAL_SUBJECTS:
     trm, tem = ee.subject == s, ei.subject == s
     if trm.sum() < 20 or tem.sum() < 20:
         continue
-    mdl = MAKE().fit(Ce[trm], ee.y[trm])
-    p = mdl.predict(Ci[tem])
-    accs.append((p == ei.y[tem]).mean()); ns.append(tem.sum())
+    p = MAKE().fit(Xe[trm], ee.y[trm]).predict(Xi[tem])
+    accs.append((p == ei.y[tem]).mean()); ns.append(int(tem.sum()))
 acc = float(np.average(accs, weights=ns))
 lo, hi = E.binom_ci(round(acc * sum(ns)), sum(ns))
 rec("cross-paradigm", "SAME subject: executed -> imagined", pooled_acc=acc,
     pooled_lo=lo, pooled_hi=hi, mean_sub_acc=float(np.mean(accs)),
     sd_sub_acc=float(np.std(accs)), n_subjects=len(accs), n_trials=int(sum(ns)))
-
-
-# =====================================================================
-# 6. HOW MUCH DOES THE ALIGNMENT KNOW? The alignment above is estimated
-#    from all of a test subject's trials, including the ones being
-#    predicted. Realistic deployment would estimate it from a short
-#    calibration block. Redo it using only the subject's FIRST run.
-# =====================================================================
-def align_first_run_only(X, subject, run):
-    out = np.empty_like(X)
-    ea = models.EuclideanAlign()
-    for u in np.unique(subject):
-        m = subject == u
-        first = np.unique(run[m])[0]
-        cal = X[m & (run == first)]
-        C = np.einsum("nct,ndt->cd", cal.astype(np.float64),
-                      cal.astype(np.float64)) / (len(cal) * cal.shape[-1])
-        C += 1e-10 * np.trace(C) / C.shape[0] * np.eye(C.shape[0])
-        w, V = np.linalg.eigh(C)
-        R = (V @ np.diag(w ** -0.5) @ V.T).astype(X.dtype)
-        out[m] = np.einsum("cd,ndt->nct", R, X[m])
-    return out
-
-
-Xf = align_first_run_only(X, sub, run)
-Covf = models.precompute_cov(Xf)
-later = run != np.array([np.unique(run[sub == s_])[0] for s_ in sub])
-r = E.loso(Covf[later], y[later], sub[later], run[later], MAKE,
-           subjects=CFG.EVAL_SUBJECTS, n_jobs=5)
-rec("align-scope", "EA from 1st run only, tested on runs 2-3", **E.summarize(r))
-r = E.loso(Cov[later], y[later], sub[later], run[later], MAKE,
-           subjects=CFG.EVAL_SUBJECTS, n_jobs=5)
-rec("align-scope", "EA from all 3 runs, tested on runs 2-3", **E.summarize(r))
-del Xf, Covf
-
-# =====================================================================
-# 7. IS THERE RUN-SPECIFIC NUISANCE AT ALL? If a classifier can tell which
-#    of a subject's three runs a trial came from, then random CV within a
-#    subject is sharing run-specific structure between train and test.
-# =====================================================================
-accs = []
-for s_ in CFG.EVAL_SUBJECTS:
-    m = sub == s_
-    if m.sum() < 30:
-        continue
-    from sklearn.model_selection import StratifiedKFold
-    Cs, rs = Cov[m], run[m]
-    pred = np.zeros(len(rs))
-    for tr_i, te_i in StratifiedKFold(5, shuffle=True, random_state=0).split(Cs, rs):
-        mdl = Pipeline([("ts", TangentSpace(metric="logeuclid")),
-                        ("sc", StandardScaler()),
-                        ("clf", LogisticRegression(C=0.1, max_iter=2000))])
-        mdl.fit(Cs[tr_i], rs[tr_i])
-        pred[te_i] = mdl.predict(Cs[te_i])
-    accs.append((pred == rs).mean())
-rec("run-identity", "which of this subject's 3 runs is it? (3-way)",
-    pooled_acc=float(np.mean(accs)), pooled_lo=float(np.mean(accs)),
-    pooled_hi=float(np.mean(accs)), chance=1 / 3, n_subjects=len(accs))
 
 print("\nwrote", OUT)
