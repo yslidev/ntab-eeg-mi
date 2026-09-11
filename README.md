@@ -575,8 +575,8 @@ cue is not lateralised, and checking whether the models agree.
 per-subject adapter, so the shared part learns the task and the adapter absorbs
 the person. That is the natural model of the structure this analysis found:
 one large nuisance factor that is identity, and one small factor that is the
-task. I would also want the scaling curve continued past 93 subjects, since
-the EEGNet numbers here do not obviously saturate.
+task. I would also want the network given enough epochs to actually fit 3,900
+heterogeneous trials, which it never got here.
 
 **What I would want that this dataset cannot give me.** Multiple sessions per
 subject. Every cross-subject number here is confounded with cross-session, and
@@ -597,7 +597,11 @@ conversation:
   could be checked on recordings that are unseen in every sense, and splitting
   the rest into selection and reporting folds.
 - Using the four seconds of rest before each cue as a placebo window, which the
-  strict alternating trial structure hands you for free.
+  gapless trial structure hands you for free — and then, when that placebo came
+  back above chance, going to the stimulus sequence rather than concluding the
+  pipeline leaked.
+- Running the electrode-region control that killed my own most interesting
+  finding, after the write-up had already been built around it.
 - Not trusting the documented `T1`/`T2` mapping, and, when my first attempt to
   verify it gave contradictory answers across paradigms, recognising that the
   pre-cue baseline is contaminated by the previous trial's beta rebound rather
@@ -623,18 +627,20 @@ it will find.
 
 Whitening fixes the frame. For each recording you compute the average spatial
 covariance over its own trials and apply its inverse square root, which forces
-that average to become a multiple of the identity. Afterwards, every person's *typical* trial
-looks the same, and what survives is how each individual trial deviates from
-that person's own typical trial. That deviation is the part that carries the
-task.
+that average to become a multiple of the identity. Afterwards every person's
+*typical* trial looks the same, and what survives is how each individual trial
+deviates from that person's own typical trial. That deviation is the part that
+carries the task.
 
 The reason I believe this is doing what I think it is doing, rather than just
 helping by accident, is the subject-identification probe. Before whitening, a
 classifier on these features names which of 93 people a trial came from about
 98% of the time. After whitening, it is at chance. The step removes identity
 almost completely and leaves the class information largely intact, and
-cross-subject accuracy rises by about four points as a result.
+cross-subject accuracy rises by 5.2 points as a result: 63.4% without it,
+69.6% with it, on the same trials.
 
 The cost is that it needs a batch of the subject's data before it can predict
-anything, which is why I measure separately what happens when the whitening is
-estimated from a short calibration block instead of the whole recording.
+anything. Estimating the whitening from a subject's first run only, instead of
+all three, costs 0.96 points — so the cost is real but small, and a short
+calibration block is enough.
