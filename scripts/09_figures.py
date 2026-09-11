@@ -155,4 +155,30 @@ if cp.is_file():
         ax.invert_yaxis(); ax.set_xlabel("accuracy"); ax.set_title(ttl, fontsize=11)
     fig.tight_layout(); fig.savefig(F / "fig9_controls.png", dpi=150)
 
+# ---------------- fig4: time-resolved (rebuilt from the CSV) --------------
+tp = R / "time_resolved.csv"
+if tp.is_file():
+    t = pd.read_csv(tp)
+    fig, ax = plt.subplots(figsize=(7.4, 3.9))
+    ax.axvspan(t.centre_s.min() - .2, 0, color="#9aa5b1", alpha=.12)
+    ax.fill_between(t.centre_s, t.pooled_lo, t.pooled_hi, alpha=.25, color=BLUE)
+    ax.plot(t.centre_s, t.pooled_acc, color=BLUE, lw=2)
+    ax.axhline(.5, color="#666", ls=":", lw=1)
+    ax.axvline(0, color=RED, lw=1.2)
+    pk = t.loc[t.pooled_acc.idxmax()]
+    ax.plot([pk.centre_s], [pk.pooled_acc], "o", color=RED, ms=5, zorder=5)
+    ax.annotate(f"{pk.pooled_acc*100:.1f}% at {pk.centre_s:+.2f} s",
+                (pk.centre_s, pk.pooled_acc), textcoords="offset points",
+                xytext=(10, 6), fontsize=9, color=RED)
+    ax.text(t.centre_s.min(), ax.get_ylim()[1], " rest, before the cue", ha="left",
+            va="top", fontsize=9, color="#555")
+    ax.text(0.07, .502, "cue", color=RED, fontsize=9)
+    ax.set_xlabel("centre of 0.75 s window, seconds from cue")
+    ax.set_ylabel("cross-subject accuracy")
+    ax.set_title("Where in the trial the information is\n"
+                 "leave-one-subject-out at every window position, 58 evaluation subjects",
+                 fontsize=10)
+    ax.set_xlim(t.centre_s.min() - .15, t.centre_s.max() + .15)
+    fig.tight_layout(); fig.savefig(F / "fig4_time_resolved.png", dpi=150)
+
 print("figures written to", F)

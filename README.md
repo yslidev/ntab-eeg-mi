@@ -144,6 +144,15 @@ adaptation that was available. On executed movement the same 16 trials are
 worth 3.5 points (73.3% to 76.8%), which is a real difference between the two
 paradigms rather than noise.
 
+**The end-to-end check.** `predict.py`, running on raw EDF files from the 12
+quarantined subjects, scores **76.3%** on imagined trials and 75.6% on executed,
+with 9 of 12 subjects individually beating chance. That is higher than the 69.3%
+EVAL estimate, and it should not be read as the model being better than
+measured: twelve subjects carry a standard error of about 4.8 points, so the two
+figures are a single standard error and a half apart. It is a consistency check,
+and what it establishes is that the shipped artefact reproduces the reported
+behaviour on recordings it has never seen, not that it is better than reported.
+
 **Two things I expected to find and did not.** The cross-subject classifier is
 *not* biased per person: the spread of how often it says "right" across
 subjects (sd 0.080) is exactly what trial sampling alone predicts (sd 0.076),
@@ -303,6 +312,39 @@ previous label follows arithmetically, and a lateralised trace of the previous
 trial in the rest period predicts the next label without containing any
 information about it. `ANALYSIS_LOG.md` section 10 works this through and
 `scripts/19_sequence_confound.py` runs the test that separates the two readings.
+
+## How much of this is the person rather than the task
+
+**Most of the spread across people is real.** Per-subject accuracy under
+cross-subject evaluation has a standard deviation of 14.6 points. Trial
+sampling alone, at 43 trials per person, would produce 6.7. Subtracting the
+sampling variance leaves an implied between-subject standard deviation of
+**13.0 points, about 79% of the observed variance**. The same decomposition
+gives 72-84% across all four regimes and both paradigms. When someone scores
+40% and someone else scores 90%, that is mostly not luck.
+
+**Decodability is a stable property of a person.** A subject's accuracy on
+imagined trials correlates with their accuracy on *executed* trials, a separate
+set of recordings and a different task, at Spearman rho = +0.29 to +0.44
+depending on regime (p = 0.001 to 0.03, n = 58). It also correlates 0.54 between
+the within-subject and cross-subject regimes.
+
+**But you cannot screen for it from resting EEG.** I tested whether a subject's
+decodability is predictable from their one-minute eyes-open and eyes-closed
+baseline runs, using nine spectral features per condition: sensorimotor mu and
+beta power, posterior alpha power and peak frequency, the aperiodic 1/f slope,
+how far the mu bump rises above that subject's own 1/f background, broadband
+amplitude, line-noise ratio, and alpha reactivity between eyes open and closed.
+Fifty-four correlations, none surviving Bonferroni correction at p < 0.00093;
+the strongest is rho = 0.25 at an uncorrected p of 0.054. A sixty-second
+recording of someone doing nothing does not tell you whether they will be
+decodable, at least not through the standard spectral summaries.
+
+This is the clearest "person, not task" result in the project, and it cuts
+both ways. Identity is overwhelmingly present in the signal: 98% decodable from
+the same features, including from rest. Decodability is a durable trait that
+replicates across paradigms. And yet the obvious markers of a good
+sensorimotor rhythm do not predict who has it.
 
 ## The thing nobody asked about: the cue is on the wrong side of the screen
 

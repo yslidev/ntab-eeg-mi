@@ -49,8 +49,8 @@ ax.text(-1.25, ax.get_ylim()[1] * 0.995, "rest (pre-cue)", ha="center",
 ax.text(0.06, 0.5015, "cue", color="#c53030", fontsize=9)
 ax.set_xlabel(f"centre of {WIN:g} s window, seconds from cue")
 ax.set_ylabel("cross-subject accuracy")
-ax.set_title("Time-resolved decoding (LOSO + alignment, every 2nd EVAL subject)",
-             fontsize=10)
+ax.set_title(f"Time-resolved decoding, leave-one-subject-out, "
+             f"{len(SUBSET)} evaluation subjects", fontsize=10)
 fig.tight_layout(); fig.savefig("figures/fig4_time_resolved.png", dpi=150)
 print("wrote figures/fig4_time_resolved.png")
 
