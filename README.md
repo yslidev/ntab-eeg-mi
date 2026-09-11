@@ -306,11 +306,12 @@ comes from the choice of analysis window instead.
 | frontal (17) | 56.1% |
 
 Three electrodes over the hand area get within six points of all 64. Frontal
-electrodes, which is where eye and facial-muscle artefact would dominate, are
-the weakest set. Parieto-occipital electrodes do reach 59.8%, which is the
-clearest quantitative hint that some of the signal is visual rather than motor,
-and is why the `early-window` block in `RESULTS.md` splits both windows by
-region.
+electrodes, where eye and facial-muscle artefact would dominate, are the weakest
+set. Parieto-occipital electrodes reach 59.8%, which looked at first like
+evidence of a visual contribution; the `early-window` block in `RESULTS.md`
+shows it is the same 59.8% no matter which part of the trial you look at, which
+is what volume conduction from sensorimotor sources gives, and the set includes
+P3 and P4.
 
 **Subject identity in the same features.** A 93-way subject classifier on these
 covariances, trained on two runs and tested on the third, reaches **97.9%**
