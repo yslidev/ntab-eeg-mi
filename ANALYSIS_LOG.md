@@ -208,3 +208,46 @@ The headline number stays on the 0.5-3.5 s window, chosen before I saw any of
 this, because that is the window whose result would survive in a setting where
 no lateralised cue is on the screen. Reporting the higher number as the
 headline would be optimising the metric rather than the claim.
+
+### 9. The result I expected to get, and did not
+
+I built the five-regime ladder expecting the usual shape: random folds inside
+one subject would look great, holding out a whole run would cost a few points,
+and holding out a person would cost a lot. That is the standard story about
+optimistic cross-validation, and I had already written most of the controls to
+explain it.
+
+On EVAL subjects, imagined trials:
+
+| regime | accuracy | shuffled twin |
+|---|---|---|
+| A within-subject, random 5-fold | 60.4% | 49.7% |
+| B within-subject, leave-one-run-out | 61.7% | 49.1% |
+| C cross-subject, leave-one-subject-out | **69.3%** | 48.7% |
+| D C plus 16 labelled calibration trials | 69.9% | 47.5% |
+
+The ladder runs the wrong way. Holding out an entire person is *easier* than
+holding out nine of that person's own trials.
+
+The explanation is arithmetic rather than neuroscience. Each subject has about
+43 usable imagined trials, so a within-subject fold trains on roughly 34 of
+them, and a leave-one-run-out fold on about 28. A cross-subject fold trains on
+about 3,900. Twenty-eight trials is not enough to estimate two class
+covariances over 64 channels, even with shrinkage; 3,900 trials from other
+people is, and what those people share survives the transfer.
+
+Two things follow that I would not have said before measuring it:
+
+- The folklore that within-subject cross-validation is inflated is a statement
+  about *leakage*, and leakage has to compete with *sample size*. On a dataset
+  with three runs and 45 trials per person, sample size wins. On a dataset with
+  an hour of data per person it would not.
+- Regime A is still optimistic in the way the folklore says. It is just
+  optimistic about a smaller number. A classifier can tell which of a
+  subject's three runs a trial came from about 99% of the time, so random folds
+  inside a subject genuinely do share a large nuisance variable; that shows up
+  as A and B being close, rather than as A beating C.
+
+The inflated figure that the brief anticipates does exist in this dataset. It
+is not regime A; it is what you get from pooling everyone's trials into one
+pile and taking a random split, which `scripts/17_naive_splits.py` measures.

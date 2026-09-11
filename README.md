@@ -3,13 +3,28 @@
 A motor-imagery decoder for the PhysioNet EEG Motor Movement/Imagery Database
 (EEGMMIDB), built for the NT@B software-division recruitment project.
 
-The interesting part of this repository is not the classifier. It is the gap
-between the first accuracy figure you can get out of this dataset and the one
-that survives contact with a held-out person. Most of the code exists to
-measure that gap and to rule out the boring explanations for it.
+The interesting part of this repository is not the classifier. It is
+everything built to find out what the classifier's accuracy is actually
+measuring. Three things turned up that I did not expect and would not have
+found by optimising a number:
 
-**Short version of the result.** See `RESULTS.md` for every number, and the
-summary table in [Results](#results) below.
+- **Cross-subject beats within-subject here.** Training on 92 other people
+  labels a new person's trials *better* than training on 28 of their own. With
+  roughly 43 trials per person, the within-subject regimes are starved, not
+  inflated. The usual story about optimistic within-subject cross-validation
+  does not describe this dataset, and saying so requires having measured both.
+- **The best analysis window is the one you should not use.** Tuning the window
+  picks 0 to 2 s after the cue over 0.5 to 3.5 s, and all of the advantage sits
+  in the first half second. In this protocol the cue is a target that appears
+  on the *left or right of the screen*, so screen position is perfectly
+  confounded with the label. That is a lateralised visual response, not motor
+  imagery, and a real BCI would have nothing to read it from.
+- **Roughly a third of people cannot be decoded at all**, and the spread across
+  people is larger than the difference between any two models I tried.
+
+See [`RESULTS.md`](RESULTS.md) for every number and
+[`ANALYSIS_LOG.md`](ANALYSIS_LOG.md) for how each one was arrived at,
+including the things that did not work.
 
 ---
 
@@ -74,9 +89,48 @@ Scripts are numbered in dependency order.
 
 ## Results
 
-Full tables in [`RESULTS.md`](RESULTS.md); figures in `figures/`. The summary
-is in the section below, and the reasoning behind each number is in
+Full tables in [`RESULTS.md`](RESULTS.md); figures in `figures/`; the reasoning
+behind each number, including the attempts that failed, in
 [`ANALYSIS_LOG.md`](ANALYSIS_LOG.md).
+
+**The number I defend: 69.3% on imagined left-fist versus right-fist, for a
+person the model has never seen.** 58 evaluation subjects, 2,483 trials, 95%
+confidence interval 67.4 to 71.1. The same pipeline gets 73.3% on executed
+movement.
+
+| regime (imagined) | accuracy | 95% CI | per-subject mean | shuffled twin |
+|---|---|---|---|---|
+| A within-subject, random 5-fold | 60.4% | 58.4-62.3 | 60.4 ± 15.6 | 49.7% |
+| B within-subject, leave-one-run-out | 61.7% | 59.7-63.6 | 61.7 ± 13.6 | 49.1% |
+| C cross-subject, leave-one-subject-out | **69.3%** | 67.4-71.1 | 69.2 ± 14.6 | 48.7% |
+| D C plus 16 labelled calibration trials | 69.9% | 67.5-72.1 | 69.8 ± 15.7 | 47.5% |
+
+| regime (executed) | accuracy | 95% CI | shuffled twin |
+|---|---|---|---|
+| A within-subject, random 5-fold | 66.1% | 64.2-67.9 | 51.0% |
+| B within-subject, leave-one-run-out | 67.2% | 65.3-69.1 | 50.3% |
+| C cross-subject, leave-one-subject-out | 73.3% | 71.5-75.0 | 48.6% |
+| D C plus 16 labelled calibration trials | 76.8% | 74.6-78.8 | 49.0% |
+
+Every shuffled twin lands within a point and a half of 50%, in every regime and
+both paradigms. That is the check that matters: it says the splits do not leak.
+
+**The ladder runs backwards, and that is a finding rather than a bug.** Each
+person contributes about 43 usable trials, so a within-subject fold trains on
+roughly 34 and a leave-one-run-out fold on about 28. A cross-subject fold
+trains on about 3,900. Twenty-eight trials are not enough to estimate two
+64-channel class covariances; 3,900 trials from other people are, and enough of
+what those people share survives the transfer to more than pay for the loss of
+personalisation. The usual warning about optimistic within-subject
+cross-validation is a statement about leakage, and on this dataset leakage
+loses to sample size.
+
+**69.3% is a group number and it hides most of what is going on.** Per-subject
+accuracy has a standard deviation of about 15 points. Only about 69% of
+evaluation subjects individually beat their own binomial chance threshold, so
+close to a third of people are not decodable at all by this model. The spread
+across people is larger than the difference between any two classifiers I
+compared.
 
 ---
 
