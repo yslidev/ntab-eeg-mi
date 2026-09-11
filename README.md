@@ -125,6 +125,26 @@ personalisation. The usual warning about optimistic within-subject
 cross-validation is a statement about leakage, and on this dataset leakage
 loses to sample size.
 
+**Labelled calibration data from the new person buys almost nothing on
+imagined trials.** Giving the model 0, 4, 8, 16, 24 or 32 labelled trials from
+the held-out subject moves accuracy from 69.3% to 70.7%, and the confidence
+interval widens as the test set shrinks, so the trend is not even clearly
+positive. The unsupervised alignment has already taken the subject-specific
+adaptation that was available. On executed movement the same 16 trials are
+worth 3.5 points (73.3% to 76.8%), which is a real difference between the two
+paradigms rather than noise.
+
+**Two things I expected to find and did not.** The cross-subject classifier is
+*not* biased per person: the spread of how often it says "right" across
+subjects (sd 0.080) is exactly what trial sampling alone predicts (sd 0.076),
+and re-centring each subject's decision threshold on their own median is worth
+0.08 points. The alignment appears to have already removed the offset. Accuracy
+also does not drift within a session: 68.2%, 69.7% and 70.0% on the three
+imagined runs, which are separated by several minutes of other tasks
+(chi-square p = 0.70), and trial position within a run explains nothing
+(rho = +0.03, p = 0.09). Threshold-free, mean per-subject area under the ROC
+curve is 0.748.
+
 **69.3% is a group number and it hides most of what is going on.** Per-subject
 accuracy has a standard deviation of about 15 points. Only about 69% of
 evaluation subjects individually beat their own binomial chance threshold, so
@@ -172,6 +192,28 @@ features from 98% down to chance.
 **Classifier.** Common spatial patterns computed in the covariance domain
 (`models.CovCSP`), log relative power of the components, shrinkage LDA.
 
+## On noise, and on not cleaning
+
+There is no ICA in this pipeline, no epoch rejection, no channel
+interpolation and no re-referencing. That is a decision, so it comes with a
+measurement rather than an assertion.
+
+The audit found no flat channels, no ADC clipping (the largest amplitudes are
+isolated samples on isolated channels, not a rail), and no runs with
+pathological durations beyond the four excluded subjects.
+`scripts/06_controls.py` then drops the noisiest 1%, 5% and 20% of epochs by
+within-band peak-to-peak amplitude and re-runs the whole cross-subject
+evaluation. If a cleaning step were needed, throwing away the worst fifth of
+the data would move the number.
+
+The reasoning behind the choice: every cleaning step is a judgement call with
+a knob on it, and knobs that are tuned while looking at accuracy are how an
+evaluation quietly becomes circular. Band-passing to 8-30 Hz already removes
+the two artefact classes that matter most here, since eye blinks live below
+8 Hz and drift below 1 Hz. Muscle artefact above 30 Hz is also filtered out,
+and the electrode-lesion control is what tells us whether what remains is
+sensorimotor or something facial.
+
 ## How the evaluation is built
 
 Five regimes, in decreasing order of what the training and test sets share.
@@ -203,6 +245,48 @@ different:
 - After the alignment step, that same subject identification falls to chance.
   The alignment is not cosmetic; it removes the dominant source of variance in
   these features, and that is measurable rather than assumed.
+
+## The thing nobody asked about: the cue is on the wrong side of the screen
+
+PhysioNet's description of this protocol says, of the left-versus-right fist
+runs: "A visual target appeared on either the left or right side of the
+screen", and the subject acts "until the target disappeared".
+
+Screen position is therefore perfectly confounded with the class label, and the
+target is visible for the whole trial. A lateralised visual stimulus produces
+lateralised occipital activity and lateralised spatial attention, both of which
+are decodable from scalp EEG and neither of which is motor imagery. Any
+classifier trained on these runs is free to read the screen instead of the
+motor cortex, and nothing in a standard cross-validation would tell you which
+it did.
+
+I did not go looking for this. The window sweep found it:
+
+| window after cue | cross-subject accuracy (DEV) |
+|---|---|
+| 0.0 - 2.0 s | **74.4%** |
+| 0.0 - 4.1 s | 71.6% |
+| 0.5 - 2.5 s | 69.0% |
+| 0.5 - 3.5 s | 68.3% |
+| 1.0 - 4.0 s | 65.7% |
+
+Two windows of the same length, 0.0-2.0 and 0.5-2.5, differ by five and a half
+points. All of the advantage is in the first 500 ms after the cue appears.
+Sensorimotor desynchronisation does not behave that way: it ramps over roughly
+half a second and is then sustained, so shifting a two-second window forward by
+500 ms should cost almost nothing. Something sharp and cue-locked is
+contributing.
+
+**This is why the headline uses 0.5 to 3.5 s and not the window that scores
+best.** A real brain-computer interface has no target on a screen telling it
+which hand the user is thinking about; if it did, it would not need EEG.
+Reporting 74.4% would be optimising the metric at the expense of the claim.
+
+Three results in `RESULTS.md` bear on how much of even the 0.5-3.5 s number is
+visual: the electrode lesion (`lesion` and `early-window` blocks), the
+time-resolved decoding curve (`figures/fig4_time_resolved.png`), and the band
+sweep, in which 13-30 Hz alone reaches 64.2% — a visual evoked response does
+not live in the beta band.
 
 ## The design decision I would defend hardest
 
@@ -273,13 +357,12 @@ about accuracy.
 
 ## What I would do next
 
-**With more time, no more compute.** Two things I did not get to. First, a
-per-subject decision-threshold correction: the cross-subject classifier's
-decision function sits off-centre for individual people, and re-centring it on
-each subject's own median is unsupervised and appears to help
-(`scripts/14_subject_bias.py`). Second, a proper filter-bank CSP with
+**With more time, no more compute.** A proper filter-bank CSP with
 mutual-information feature selection, which is the standard strong baseline on
-this task and which I only approximated.
+this task and which I only approximated with a filter-bank log-variance model.
+I would also want the visual-cue question answered properly rather than
+circumstantially, which means decoding the same contrast from a dataset whose
+cue is not lateralised, and checking whether the models agree.
 
 **With more compute.** Train a single network across all subjects with a small
 per-subject adapter, so the shared part learns the task and the adapter absorbs
@@ -348,67 +431,3 @@ cross-subject accuracy rises by about four points as a result.
 The cost is that it needs a batch of the subject's data before it can predict
 anything, which is why I measure separately what happens when the whitening is
 estimated from a short calibration block instead of the whole recording.
-
-## On noise, and on not cleaning
-
-There is no ICA in this pipeline, no epoch rejection, no channel
-interpolation and no re-referencing. That is a decision, so it comes with a
-measurement rather than an assertion.
-
-The audit found no flat channels, no ADC clipping (the largest amplitudes are
-isolated samples on isolated channels, not a rail), and no runs with
-pathological durations beyond the four excluded subjects.
-`scripts/06_controls.py` then drops the noisiest 1%, 5% and 20% of epochs by
-within-band peak-to-peak amplitude and re-runs the whole cross-subject
-evaluation. If a cleaning step were needed, throwing away the worst fifth of
-the data would move the number.
-
-The reasoning behind the choice: every cleaning step is a judgement call with
-a knob on it, and knobs that are tuned while looking at accuracy are how an
-evaluation quietly becomes circular. Band-passing to 8-30 Hz already removes
-the two artefact classes that matter most here, since eye blinks live below
-8 Hz and drift below 1 Hz. Muscle artefact above 30 Hz is also filtered out,
-and the electrode-lesion control is what tells us whether what remains is
-sensorimotor or something facial.
-
-## The thing nobody asked about: the cue is on the wrong side of the screen
-
-PhysioNet's description of this protocol says, of the left-versus-right fist
-runs: "A visual target appeared on either the left or right side of the
-screen", and the subject acts "until the target disappeared".
-
-Screen position is therefore perfectly confounded with the class label, and the
-target is visible for the whole trial. A lateralised visual stimulus produces
-lateralised occipital activity and lateralised spatial attention, both of which
-are decodable from scalp EEG and neither of which is motor imagery. Any
-classifier trained on these runs is free to read the screen instead of the
-motor cortex, and nothing in a standard cross-validation would tell you which
-it did.
-
-I did not go looking for this. The window sweep found it:
-
-| window after cue | cross-subject accuracy (DEV) |
-|---|---|
-| 0.0 - 2.0 s | **74.4%** |
-| 0.0 - 4.1 s | 71.6% |
-| 0.5 - 2.5 s | 69.0% |
-| 0.5 - 3.5 s | 68.3% |
-| 1.0 - 4.0 s | 65.7% |
-
-Two windows of the same length, 0.0-2.0 and 0.5-2.5, differ by five and a half
-points. All of the advantage is in the first 500 ms after the cue appears.
-Sensorimotor desynchronisation does not behave that way: it ramps over roughly
-half a second and is then sustained, so shifting a two-second window forward by
-500 ms should cost almost nothing. Something sharp and cue-locked is
-contributing.
-
-**This is why the headline uses 0.5 to 3.5 s and not the window that scores
-best.** A real brain-computer interface has no target on a screen telling it
-which hand the user is thinking about; if it did, it would not need EEG.
-Reporting 74.4% would be optimising the metric at the expense of the claim.
-
-Three results in `RESULTS.md` bear on how much of even the 0.5-3.5 s number is
-visual: the electrode lesion (`lesion` and `early-window` blocks), the
-time-resolved decoding curve (`figures/fig4_time_resolved.png`), and the band
-sweep, in which 13-30 Hz alone reaches 64.2% — a visual evoked response does
-not live in the beta band.

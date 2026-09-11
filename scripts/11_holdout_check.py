@@ -40,8 +40,8 @@ print(f"{'paradigm':<10}{'n files':>8}{'n trials':>10}{'pooled acc':>12}"
 for par, g in df.groupby("paradigm"):
     n, k = int(g.n.sum()), int(g.correct.sum())
     lo, hi = E.binom_ci(k, n)
-    bysub = g.groupby("subject").apply(lambda x: x.correct.sum() / x.n.sum(),
-                                       include_groups=False)
+    agg = g.groupby("subject")[["correct", "n"]].sum()
+    bysub = agg.correct / agg.n
     print(f"{par:<10}{len(g):>8}{n:>10}{k/n:>12.4f}"
           f"{f'[{lo:.3f}, {hi:.3f}]':>18}{bysub.mean():>13.4f}"
           f" ± {bysub.std():.3f}")

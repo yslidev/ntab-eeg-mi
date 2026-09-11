@@ -1,8 +1,7 @@
 #!/bin/bash
-# Remaining analyses, run after 05_main_regimes.py completes.
+# Remaining analyses, in dependency order. Run after 05_main_regimes.py.
 cd "$(dirname "$0")/.."
 PY=.venv/bin/python
-while pgrep -f 05_main_regimes >/dev/null; do sleep 15; done
 set -x
 $PY scripts/14_subject_bias.py     > logs/14_bias.log       2>&1
 $PY scripts/06_controls.py         > logs/06_controls.log   2>&1

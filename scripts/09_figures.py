@@ -30,11 +30,14 @@ for ax, par in zip(axes, ["imagined", "executed"]):
     ax.axvline(.5, color="black", lw=1)
     ax.set_yticks(ypos)
     ax.set_yticklabels([r[2:] for r in real.regime], fontsize=9)
-    ax.set_xlim(.44, .78); ax.set_xlabel("pooled accuracy")
+    ax.set_xlim(.44, .80); ax.set_xlabel("pooled accuracy")
     ax.set_title(par, fontsize=11)
     ax.invert_yaxis()
-axes[0].legend(fontsize=9, loc="lower right")
-fig.suptitle("The same model, five different definitions of 'held out'", fontsize=12)
+axes[0].legend(fontsize=9, loc="upper left", bbox_to_anchor=(0.0, -0.16),
+               ncol=2, frameon=False)
+fig.suptitle("One model, four definitions of 'held out'.  "
+             "Grey = the same run with labels permuted inside each block.",
+             fontsize=11)
 fig.tight_layout(); fig.savefig(F / "fig2_regime_ladder.png", dpi=150)
 
 # ---------------- fig3: per-subject spread --------------------------------

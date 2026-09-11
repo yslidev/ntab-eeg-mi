@@ -37,6 +37,17 @@ def one(s):
 
 res = Parallel(n_jobs=5)(delayed(one)(s) for s in CFG.EVAL_SUBJECTS)
 
+
+def _auc(scores, labels):
+    """Mann-Whitney U statistic, normalised: P(score of a positive exceeds
+    score of a negative), ties counted as half."""
+    labels = np.asarray(labels)
+    n1, n0 = int((labels == 1).sum()), int((labels == 0).sum())
+    if n1 == 0 or n0 == 0:
+        return float("nan")
+    r = stats.rankdata(scores)
+    return float((r[labels == 1].sum() - n1 * (n1 + 1) / 2) / (n1 * n0))
+
 rows = []
 for r in res:
     d, yy = r["scores"], r["y"]
@@ -49,7 +60,7 @@ for r in res:
         mean_score=float(d.mean()), sd_score=float(d.std()),
         acc_raw=float((raw_pred == yy).mean()),
         acc_centred=float((cen_pred == yy).mean()),
-        auc=float(stats.rankdata(d)[yy == 1].mean() / len(d) if len(set(yy)) > 1 else np.nan)))
+        auc=_auc(d, yy)))
 df = pd.DataFrame(rows)
 df.to_csv("results/subject_bias.csv", index=False)
 
