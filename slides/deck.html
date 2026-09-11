@@ -1,4 +1,4 @@
-<title>Reading the Screen, Not the Motor Cortex</title>
+<title>Left Fist, Right Fist</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&display=swap">
@@ -105,20 +105,20 @@ html{scroll-behavior:smooth}
 
 <section class="slide" id="s1">
   <div class="head"><span class="eyebrow">Claim</span><span class="idx">01 / 09</span></div>
-  <h1>Reading the screen, not the motor cortex</h1>
-  <p class="lede">Left fist versus right fist, imagined, from 64-channel scalp EEG.
-  PhysioNet EEGMMIDB, 109 subjects, 105 usable, 43 trials each.</p>
+  <h1>Left fist, right fist</h1>
+  <p class="lede">Imagined movement, 64-channel scalp EEG. PhysioNet EEGMMIDB,
+  109 subjects, 105 usable, about 43 trials each.</p>
   <div class="big">
     <div class="stat"><div class="v cold">69.3%</div>
-      <div class="k">unseen person<br>0.5–3.5 s window</div></div>
-    <div class="stat"><div class="v warm">59.8%</div>
-      <div class="k">the same person<br>after the cue transient</div></div>
+      <div class="k">a person the model<br>has never seen</div></div>
+    <div class="stat"><div class="v">60.4%</div>
+      <div class="k">that person's own<br>trials, their own model</div></div>
     <div class="stat"><div class="v dim">50%</div>
       <div class="k">chance<br>classes balanced 24/21</div></div>
   </div>
-  <p>The gap between those two numbers is the project. Most of what looks like
-  motor-imagery decoding is locked to the moment a target appears on the left or
-  right of the screen.</p>
+  <p>Cross-subject beats within-subject, which is backwards, and explaining why
+  is where this starts. Everything after slide three is an attempt to find a
+  reason the 69.3% might not mean what it says.</p>
   <div class="note">58 evaluation subjects · 2,483 trials · 95% CI 67.4–71.1 ·
   every label-shuffled control within 1.5 points of 50%</div>
 </section>
@@ -255,10 +255,16 @@ html{scroll-behavior:smooth}
       the previous label <em class="term">a·q + (1−a)(1−q)</em> of the time, with
       <em class="term">q = 0.768</em>. At <em class="term">a = 0.693</em> that is
       <strong>60.4%</strong>. Observed: 61.0%. Nothing left to explain.</p>
-      <p><strong>The pre-cue control.</strong> The rest period sits 2–4 s after the
-      previous movement, which is when lateralised beta rebound peaks. It carries a
-      trace of the <em>previous</em> trial, and the next label is usually the opposite.
-      It predicts the future without containing it.</p>
+      <p><strong>The pre-cue control.</strong> Split trials by whether the label
+      repeated. The model learned "predict the opposite of the previous trial", so it
+      is right on alternations and wrong on repeats, mirrored about chance.</p>
+      <table style="margin-top:6px">
+        <tr><th>pre-cue rest predicts…</th><th>accuracy</th></tr>
+        <tr><td>the <em>previous</em> trial's label</td><td class="n">63.7%</td></tr>
+        <tr><td>the current label, on alternations</td><td class="n">60.7%</td></tr>
+        <tr class="bad"><td>the current label, on repeats</td><td class="n">40.3%</td></tr>
+      </table>
+      <p style="margin-top:12px">No information about the current trial at all.</p>
     </div>
   </div>
   <div class="note">Distinguishing the two readings needed a property of the protocol,
