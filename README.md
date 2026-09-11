@@ -458,16 +458,17 @@ dishonesty.
 
 ## The convolutional network, and two bugs in my own harness
 
-EEGNet, trained across subjects, came back at **50.7%** with 53.5% accuracy on
-its own training set. That is a null result, and most of it was my fault.
+EEGNet, trained across subjects, reaches **50.5%** on held-out people while
+sitting at 58.5% on its own training set. It is a null result, and the first
+version of it was my fault twice over.
 
 **Early stopping was restoring an untrained network.** I checkpointed on
 validation accuracy every five epochs from the start of training. On a
 validation set of about 340 trials, early validation accuracy is noise, so the
-best-scoring checkpoint was often from epoch five, and that is what got
-restored and reported. The giveaway was a verbose trace showing 0.560 training
-accuracy at epoch 40 while the returned model scored 0.507 on the same data.
-Fixed by only considering checkpoints after the one-cycle schedule has annealed.
+best-scoring checkpoint was often from epoch five, and that is what got restored
+and reported. The giveaway was a verbose trace showing 0.560 training accuracy
+at epoch 40 while the returned model scored 0.507 on the same data. Fixed by
+only considering checkpoints once the one-cycle schedule has annealed.
 
 **Per-channel trial normalisation was deleting the signal.** I was z-scoring
 every channel of every trial independently. Left-versus-right imagery is a
@@ -475,19 +476,26 @@ every channel of every trial independently. Left-versus-right imagery is a
 forcing every channel to unit variance removes exactly that. Fixed by scaling
 each trial by a single scalar.
 
-**What is left is a compute limit, not a bug.** The same network trained on 300
-trials from 8 subjects reaches 87.7% on its own training set; trained on 3,200
-trials from 93 subjects it reaches 56.7%. It can fit a small homogeneous set and
-cannot fit a large heterogeneous one. A 2,000-parameter network at 80 Hz for 70
-epochs is not enough, and each fold cost about six minutes on this laptop, which
-is why it was 70 epochs.
+**Neither fix changed the answer**, which is the useful part. Before the fixes:
+50.7% test, 53.5% train. After, with 90 epochs instead of 70: 50.5% test, 58.5%
+train. The bugs were real and worth finding; they were not why the network
+failed.
+
+**What remains is a capacity and compute limit.** The same network trained on
+300 trials from 8 subjects reaches 87.7% on its own training set; trained on
+3,900 trials from 93 subjects it reaches 58.5%, and none of that transfers —
+the eight-point gap between train and test is subject-specific memorisation,
+not learning. A 2,000-parameter network at 80 Hz cannot fit 3,900 heterogeneous
+trials, and at roughly six minutes per fold on this laptop I could not give it
+the epochs to try.
 
 I report this as a null result about my compute budget, not about EEGNet.
 Published cross-subject figures for EEGNet on this dataset sit in the
-low-to-mid sixties and I have no reason to doubt them. What I can say is that a
-classical covariance pipeline reached 69.3% in seven seconds per fold on the
+low-to-mid sixties and I have no reason to doubt them. What I can say is that
+a classical covariance pipeline reached 69.3% in seven seconds per fold on the
 same machine, and that on a dataset with 43 trials per person that is the
-correct engineering choice.
+correct engineering choice. `results/deep_prebugfix.csv` keeps the numbers from
+before the fixes so the comparison is checkable.
 
 ## The design decision I would defend hardest
 

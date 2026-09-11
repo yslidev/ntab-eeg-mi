@@ -382,13 +382,18 @@ imagery is a *relative* power difference between channels over the two
 hemispheres, and forcing every channel to unit variance deletes exactly that.
 Fixed by scaling each trial by a single scalar. It did not rescue the result.
 
-**What was left is a capacity and compute limit, not a bug.** The diagnostic
-that matters: the same network trained on 300 trials from 8 subjects reaches
-87.7% on its own training set; trained on 3,200 trials from 93 subjects it
-reaches 56.7%. It can fit a small, homogeneous set and cannot fit a large,
-heterogeneous one. A 2,000-parameter network at 80 Hz for 70 epochs is simply
-not enough for this, and on an M-series laptop each fold cost about six minutes,
-which is why it was 70 epochs.
+**Neither fix changed the answer.** Before: 50.7% test, 53.5% train. After,
+with 90 epochs instead of 70: 50.5% test, 58.5% train. That is the useful part
+— the bugs were real and worth finding, and they were not the reason.
+
+**What was left is a capacity and compute limit.** The diagnostic that matters:
+the same network trained on 300 trials from 8 subjects reaches 87.7% on its own
+training set; trained on 3,900 trials from 93 subjects it reaches 58.5%, and
+the eight points between that and 50.5% on new people are subject-specific
+memorisation rather than anything transferable. It can fit a small homogeneous
+set and cannot fit a large heterogeneous one. A 2,000-parameter network at 80 Hz
+is not enough for this, and on an M-series laptop each fold cost about six
+minutes, which is why it got 90 epochs and not 900.
 
 I am reporting this as a null result about my compute budget rather than about
 EEGNet. The published cross-subject figures for EEGNet on this dataset are in

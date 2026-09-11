@@ -264,6 +264,12 @@ Consecutive trials in a run carry different labels 76.8% of the time (lag-1 corr
 | 2.0-4.0 s, sensorimotor [15 ch] | 60.6% | [58.6, 62.5] |
 | 2.0-4.0 s, parieto-occipital [17 ch] | 55.6% | [53.6, 57.6] |
 
+## 6. EEGNet
+
+| configuration | test acc | 95% CI | train acc | per-subject mean | s |
+|---|---|---|---|---|---|
+| EEGNet cross-subject (all train subj) | 50.5% | [48.6, 52.5] | 58.5% | 50.5% | 951 |
+
 ## 7. Predicting who is decodable from a resting recording
 
 Spearman correlations, 58 subjects, 54 tests (Bonferroni p < 0.00093).
