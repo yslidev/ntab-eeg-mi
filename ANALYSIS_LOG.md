@@ -386,6 +386,13 @@ Fixed by scaling each trial by a single scalar. It did not rescue the result.
 with 90 epochs instead of 70: 50.5% test, 58.5% train. That is the useful part
 — the bugs were real and worth finding, and they were not the reason.
 
+**The shuffled control names what it was doing instead.** Identical training,
+labels permuted inside each subject: 56.6% train, 49.6% test, against 58.5% and
+50.5% with real labels. The network fits arbitrary labels about as well as true
+ones. Its training accuracy was never evidence of learning; it was the capacity
+to memorise individual trials, which is exactly what the train/test gap in the
+real-label run also says.
+
 **What was left is a capacity and compute limit.** The diagnostic that matters:
 the same network trained on 300 trials from 8 subjects reaches 87.7% on its own
 training set; trained on 3,900 trials from 93 subjects it reaches 58.5%, and

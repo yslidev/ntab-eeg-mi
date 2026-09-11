@@ -481,6 +481,13 @@ each trial by a single scalar.
 train. The bugs were real and worth finding; they were not why the network
 failed.
 
+**The shuffled control is the diagnosis.** Run the identical training with
+labels permuted inside each subject, and the network reaches **56.6%** on its
+own training set against 58.5% with real labels, and 49.6% on held-out people.
+It fits arbitrary labels almost exactly as well as true ones. Whatever it is
+doing during training is memorisation of individual trials, and essentially
+none of it is the task.
+
 **What remains is a capacity and compute limit.** The same network trained on
 300 trials from 8 subjects reaches 87.7% on its own training set; trained on
 3,900 trials from 93 subjects it reaches 58.5%, and none of that transfers —

@@ -42,10 +42,11 @@ def cross_subject(train_pool, tag, epochs, seed=0, n_groups=None):
     for g in (GROUPS if n_groups is None else GROUPS[:n_groups]):
         te = np.isin(sub, g)
         pool = np.array([s for s in train_pool if s not in g])
-        if len(pool) < 12:
+        if len(pool) < 6:          # need enough to carve a validation set
             continue
         r = np.random.default_rng(seed + int(g[0]))
-        va_s = r.choice(pool, size=max(4, len(pool) // 10), replace=False)
+        va_s = r.choice(pool, size=max(2, min(len(pool) // 5, len(pool) - 4)),
+                        replace=False)
         tr = np.isin(sub, [s for s in pool if s not in va_s])
         va = np.isin(sub, va_s)
         pred, info = deep.train_eval(X[tr], y[tr], X[te], y[te], X[va], y[va],

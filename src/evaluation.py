@@ -138,6 +138,13 @@ def loso(X, y, subject, run, make_model, calib_n=0,
 
 def summarize(rows, name=""):
     import pandas as pd
+    if not len(rows):                 # e.g. every fold was skipped
+        return dict(name=name, pooled_acc=float("nan"), pooled_lo=float("nan"),
+                    pooled_hi=float("nan"), mean_sub_acc=float("nan"),
+                    sd_sub_acc=float("nan"), median=float("nan"),
+                    q25=float("nan"), q75=float("nan"), min=float("nan"),
+                    max=float("nan"), n_subjects=0, n_trials=0,
+                    frac_sig=float("nan"))
     df = pd.DataFrame(rows)
     n_tot = df.n.sum()
     k_tot = (df.acc * df.n).sum()
