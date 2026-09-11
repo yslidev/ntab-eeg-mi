@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Left Fist, Right Fist</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -119,12 +120,12 @@ html{scroll-behavior:smooth}
   <p>Cross-subject beats within-subject, which is backwards, and explaining why
   is where this starts. Everything after slide three is an attempt to find a
   reason the 69.3% might not mean what it says.</p>
-  <div class="note">58 evaluation subjects · 2,483 trials · 95% CI 67.4–71.1 ·
+  <div class="note">58 evaluation subjects &middot; 2,483 trials &middot; 95% CI 67.4&ndash;71.1 &middot;
   every label-shuffled control within 1.5 points of 50%</div>
 </section>
 
 <section class="slide" id="s2">
-  <div class="head"><span class="eyebrow">Claim · how the data is split</span><span class="idx">02 / 09</span></div>
+  <div class="head"><span class="eyebrow">Claim &middot; how the data is split</span><span class="idx">02 / 09</span></div>
   <h2>Three groups of subjects, fixed before anything was fitted</h2>
   <div class="cols c2">
     <div>
@@ -142,18 +143,18 @@ html{scroll-behavior:smooth}
       <p>Training sets always contain every other non-holdout subject, so DEV and
       EVAL folds see the same amount of data. Only the test folds differ.</p>
       <p>About fifty configurations were compared against DEV. A DEV estimate carries
-      a confidence interval of roughly ±2.4 points, so the winner is optimistic
+      a confidence interval of roughly &plusmn;2.4 points, so the winner is optimistic
       <em>on DEV</em>. That is precisely why the reported figures come from EVAL,
       and why the CSP component count was picked by a one-standard-error rule
       rather than by taking the maximum.</p>
     </div>
   </div>
-  <div class="note">src/config.py · four subjects excluded by the audit: three recorded
+  <div class="note">src/config.py &middot; four subjects excluded by the audit: three recorded
   at 128 Hz with irreconcilable annotation timing, one with a malformed run</div>
 </section>
 
 <section class="slide" id="s3">
-  <div class="head"><span class="eyebrow">Claim · the evaluation</span><span class="idx">03 / 09</span></div>
+  <div class="head"><span class="eyebrow">Claim &middot; the evaluation</span><span class="idx">03 / 09</span></div>
   <h2>One model, four definitions of "held out"</h2>
   <div class="cols c32">
     <figure>
@@ -176,7 +177,7 @@ html{scroll-behavior:smooth}
 </section>
 
 <section class="slide" id="s4">
-  <div class="head"><span class="eyebrow"><b>Challenge</b> · when is the information</span><span class="idx">04 / 09</span></div>
+  <div class="head"><span class="eyebrow"><b>Challenge</b> &middot; when is the information</span><span class="idx">04 / 09</span></div>
   <h2>Most of it arrives 450 ms after the cue</h2>
   <div class="cols c32">
     <figure>
@@ -187,24 +188,24 @@ html{scroll-behavior:smooth}
       <p>Accuracy climbs from 55% to <strong>74.8%</strong> in 600 ms, peaks 450 ms
       after the cue, then decays monotonically for the rest of the trial.</p>
       <p>I read that shape as a stimulus-evoked response, because a sharp peak that
-      decays is not what a sustained rhythm looks like — and this protocol puts the
+      decays is not what a sustained rhythm looks like &mdash; and this protocol puts the
       cue on the left or right of the screen.</p>
       <p>That reading turned out to be wrong. The next slide is the control that
       killed it.</p>
     </div>
   </div>
-  <div class="note">The sustained portion, 2.5–4.5 s, holds 59.8% — a floor under the
+  <div class="note">The sustained portion, 2.5&ndash;4.5 s, holds 59.8% &mdash; a floor under the
   strictest possible reading, not the headline</div>
 </section>
 
 <section class="slide" id="s5">
-  <div class="head"><span class="eyebrow"><b>Challenge</b> · the thing nobody asked about</span><span class="idx">05 / 09</span></div>
+  <div class="head"><span class="eyebrow"><b>Challenge</b> &middot; the thing nobody asked about</span><span class="idx">05 / 09</span></div>
   <h2>I disproved my own best finding</h2>
   <div class="cols c23">
     <div>
       <div class="quote">
         <p>"A visual target appeared on either the left or right side of the screen"
-        … the subject acts "until the target disappeared".</p>
+        &hellip; the subject acts "until the target disappeared".</p>
         <cite>PhysioNet EEGMMIDB protocol, runs 3/4/7/8/11/12</cite>
       </div>
       <p>Screen position is perfectly confounded with the class label, and the target
@@ -219,47 +220,47 @@ html{scroll-behavior:smooth}
       early advantage is visual it belongs to the back of the head, and only early.</p>
       <table>
         <tr><th>window</th><th>all 64</th><th>sensori&shy;motor</th><th>parieto-occip.</th></tr>
-        <tr><td>0.0 – 2.0 s</td><td class="n">71.0%</td><td class="n">67.6%</td><td class="n">59.6%</td></tr>
-        <tr><td>0.5 – 3.5 s</td><td class="n">69.3%</td><td class="n">66.1%</td><td class="n">59.8%</td></tr>
+        <tr><td>0.0 &ndash; 2.0 s</td><td class="n">71.0%</td><td class="n">67.6%</td><td class="n">59.6%</td></tr>
+        <tr><td>0.5 &ndash; 3.5 s</td><td class="n">69.3%</td><td class="n">66.1%</td><td class="n">59.8%</td></tr>
       </table>
       <p style="margin-top:14px">It does neither. Parieto-occipital sites give the same
-      number at every window position — volume conduction, and P3/P4 sit near the hand
+      number at every window position &mdash; volume conduction, and P3/P4 sit near the hand
       areas. What changes with the window is the <em>sensorimotor</em> strip.</p>
       <p>The early peak is the fast first phase of desynchronisation after a movement
       cue. The confound is real and undismissable by design; it is not the driver.</p>
     </div>
   </div>
   <div class="note">Four CSP patterns fitted across 93 subjects are dipoles over C3 and
-  C4 · 13–30 Hz alone reaches 64.2% and a visual evoked response is not in the beta band</div>
+  C4 &middot; 13&ndash;30 Hz alone reaches 64.2% and a visual evoked response is not in the beta band</div>
 </section>
 
 <section class="slide" id="s6">
-  <div class="head"><span class="eyebrow"><b>Challenge</b> · two controls that failed</span><span class="idx">06 / 09</span></div>
+  <div class="head"><span class="eyebrow"><b>Challenge</b> &middot; two controls that failed</span><span class="idx">06 / 09</span></div>
   <h2>The stimulus sequence is not a coin flip</h2>
   <div class="cols c2">
     <div>
       <table>
         <tr><th>control</th><th>accuracy</th></tr>
-        <tr class="bad"><td>Rest <em>before</em> the cue → upcoming label</td><td class="n">55.6%</td></tr>
-        <tr class="bad"><td>Task window → <em>previous</em> trial's label</td><td class="n">61.0%</td></tr>
+        <tr class="bad"><td>Rest <em>before</em> the cue &rarr; upcoming label</td><td class="n">55.6%</td></tr>
+        <tr class="bad"><td>Task window &rarr; <em>previous</em> trial's label</td><td class="n">61.0%</td></tr>
       </table>
       <p style="margin-top:14px">Read naively: the pipeline leaks, and trials are not
       independent. Either would sink the headline.</p>
       <p>Consecutive trials in a run carry <strong>different</strong> labels 76.8% of
-      the time. Lag-1 correlation −0.54, p ≈ 10⁻²⁴⁵. BCI2000's target sequence strongly
+      the time. Lag-1 correlation &minus;0.54, p &asymp; 10&#8315;&sup2;&#8308;&#8309;. BCI2000's target sequence strongly
       alternates, and I had assumed it was random.</p>
     </div>
     <div>
       <p><strong>The carry-over control.</strong> A decoder right about the current
       label a fraction <em class="term">a</em> of the time is automatically right about
-      the previous label <em class="term">a·q + (1−a)(1−q)</em> of the time, with
+      the previous label <em class="term">a&middot;q + (1&minus;a)(1&minus;q)</em> of the time, with
       <em class="term">q = 0.768</em>. At <em class="term">a = 0.693</em> that is
       <strong>60.4%</strong>. Observed: 61.0%. Nothing left to explain.</p>
       <p><strong>The pre-cue control.</strong> Split trials by whether the label
       repeated. The model learned "predict the opposite of the previous trial", so it
       is right on alternations and wrong on repeats, mirrored about chance.</p>
       <table style="margin-top:6px">
-        <tr><th>pre-cue rest predicts…</th><th>accuracy</th></tr>
+        <tr><th>pre-cue rest predicts&hellip;</th><th>accuracy</th></tr>
         <tr><td>the <em>previous</em> trial's label</td><td class="n">63.7%</td></tr>
         <tr><td>the current label, on alternations</td><td class="n">60.7%</td></tr>
         <tr class="bad"><td>the current label, on repeats</td><td class="n">40.3%</td></tr>
@@ -272,7 +273,7 @@ html{scroll-behavior:smooth}
 </section>
 
 <section class="slide" id="s7">
-  <div class="head"><span class="eyebrow">What survives · controls</span><span class="idx">07 / 09</span></div>
+  <div class="head"><span class="eyebrow">What survives &middot; controls</span><span class="idx">07 / 09</span></div>
   <h2>What the accuracy is, and is not</h2>
   <div class="cols c2">
     <div>
@@ -302,25 +303,25 @@ html{scroll-behavior:smooth}
     </div>
   </div>
   <div class="note">Dropping the noisiest 1% of epochs by peak-to-peak amplitude moves
-  accuracy by 0.1 points — which is why there is no ICA and no epoch rejection</div>
+  accuracy by 0.1 points &mdash; which is why there is no ICA and no epoch rejection</div>
 </section>
 
 <section class="slide" id="s8">
-  <div class="head"><span class="eyebrow">What survives · engineering</span><span class="idx">08 / 09</span></div>
+  <div class="head"><span class="eyebrow">What survives &middot; engineering</span><span class="idx">08 / 09</span></div>
   <h2>The decision I would defend hardest</h2>
   <div class="cols c2">
     <div>
       <p>CSP normally estimates each class's covariance from concatenated raw trials.
-      In leave-one-subject-out that is a 64 × 1.9-million-sample covariance, twice, in
+      In leave-one-subject-out that is a 64 &times; 1.9-million-sample covariance, twice, in
       every one of 58 folds. It used 4 GB per worker, took 150 s per configuration, and
       drove a 24 GB laptop into 40 GB of swap.</p>
       <p>An epoch's covariance does not depend on which fold the epoch is in. Computing
       it once and solving the same eigenvalue problem in the covariance domain agrees
-      with MNE's implementation to within 0.7 points, against a ±2.4-point interval.</p>
+      with MNE's implementation to within 0.7 points, against a &plusmn;2.4-point interval.</p>
     </div>
     <div>
       <div class="big">
-        <div class="stat"><div class="v cold">22×</div><div class="k">faster<br>150 s → 7 s per fold</div></div>
+        <div class="stat"><div class="v cold">22&times;</div><div class="k">faster<br>150 s &rarr; 7 s per fold</div></div>
         <div class="stat"><div class="v">0.7</div><div class="k">points of<br>disagreement</div></div>
       </div>
       <p>The alternative was to keep MNE's CSP and run fewer controls. That is the wrong
@@ -331,12 +332,12 @@ html{scroll-behavior:smooth}
       fold from the ones that do not. CSP filters do. Covariance matrices do not.</p>
     </div>
   </div>
-  <div class="note">models.CovCSP · the same principle applies to log-variance and
+  <div class="note">models.CovCSP &middot; the same principle applies to log-variance and
   filter-bank power</div>
 </section>
 
 <section class="slide" id="s9">
-  <div class="head"><span class="eyebrow">What survives · limits</span><span class="idx">09 / 09</span></div>
+  <div class="head"><span class="eyebrow">What survives &middot; limits</span><span class="idx">09 / 09</span></div>
   <h2>What I trust least, and what I would do next</h2>
   <div class="cols c2">
     <div>
@@ -355,7 +356,7 @@ html{scroll-behavior:smooth}
     <div>
       <p><strong>Next, with more compute.</strong> One network across all subjects with
       a small per-subject adapter: the shared part learns the task, the adapter absorbs
-      the person. That is the structure this analysis found — one large nuisance factor
+      the person. That is the structure this analysis found &mdash; one large nuisance factor
       that is identity, one small factor that is the task.</p>
       <p><strong>Next, without.</strong> Decode the same contrast from a dataset whose
       cue is not lateralised, and see whether the 60% survives.</p>
@@ -366,15 +367,15 @@ html{scroll-behavior:smooth}
       tuned model against an untuned one.</p>
     </div>
   </div>
-  <div class="note">github.com/yslidev/ntab-eeg-mi · RESULTS.md for every number ·
+  <div class="note">github.com/yslidev/ntab-eeg-mi &middot; RESULTS.md for every number &middot;
   ANALYSIS_LOG.md for how each was arrived at</div>
 </section>
 
 </div>
 
 <nav class="rail" aria-label="Slide navigation">
-  <button id="prev" type="button">← Prev</button>
-  <button id="next" type="button">Next →</button>
+  <button id="prev" type="button">&larr; Prev</button>
+  <button id="next" type="button">Next &rarr;</button>
   <span id="pos">01 / 09</span>
   <span class="dots" id="dots"></span>
   <button id="theme" type="button">Theme</button>
