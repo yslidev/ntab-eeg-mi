@@ -101,6 +101,7 @@ Scripts are numbered in dependency order.
 | `19_sequence_confound.py` | separates the alternating cue sequence from real carry-over |
 | `20_missing_controls.py` | artefact rejection, and where the early-window advantage lives |
 | `13_make_results_md.py` | regenerates `RESULTS.md` |
+| `make_site.sh` | copies the deck and its figures into `site/` for static hosting |
 
 ---
 
